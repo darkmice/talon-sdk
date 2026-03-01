@@ -5,10 +5,10 @@
 ## 安装
 
 ```bash
-cargo build --release   # 编译 Rust 动态库
-cd sdk/nodejs
-npm install
+npm install talon-db
 ```
+
+Native library 在 `npm install` 时自动从 GitHub Releases 下载，无需手动编译。
 
 ## 用法
 

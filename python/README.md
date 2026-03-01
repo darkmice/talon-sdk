@@ -5,13 +5,10 @@
 ## 安装
 
 ```bash
-# 先编译 Rust 动态库
-cargo build --release
-
-# 安装 Python 包
-cd sdk/python
-pip install -e .
+pip install talon-db
 ```
+
+Native library 在首次 `import talon` 时自动从 GitHub Releases 下载，无需手动编译。
 
 ## 快速开始
 
@@ -57,22 +54,19 @@ with Talon("./my_data") as db:
 ## 测试
 
 ```bash
-# 先编译动态库
-cargo build --release
-
-# 运行 Python SDK 端到端测试（9 项，覆盖 SQL/KV/TS/MQ/Vector）
-cd sdk/python
+pip install talon-db
 python3 tests/test_sdk.py
 ```
 
-## 库路径
+## 库查找优先级
 
 SDK 按以下顺序查找 `libtalon` 动态库：
 
 1. `TALON_LIB_PATH` 环境变量
-2. SDK 包同目录
-3. 项目 `target/release` 或 `target/debug`
-4. 系统搜索路径
+2. 包内 `talon/native/` 目录（platform wheel）
+3. SDK 开发布局 `talon-sdk/lib/{platform}/`
+4. 缓存目录（自动从 GitHub Releases 下载）
+5. 系统搜索路径
 
 ## 特性
 

@@ -2,11 +2,18 @@
 
 通过 JNA 封装 `talon_execute` C ABI，Java 11+。
 
-## 前置
+## 安装
 
-```bash
-cargo build --release   # 编译 libtalon
+Maven:
+```xml
+<dependency>
+  <groupId>io.talon</groupId>
+  <artifactId>talon-java</artifactId>
+  <version>0.1.3</version>
+</dependency>
 ```
+
+Native library 内嵌于 JAR 中，运行时自动提取，无需手动编译。
 
 ## 用法
 

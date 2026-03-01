@@ -2,11 +2,13 @@
 
 通过 P/Invoke 封装 `talon_execute` C ABI，支持 .NET 8+。
 
-## 前置
+## 安装
 
 ```bash
-cargo build --release   # 编译 libtalon
+dotnet add package TalonDb
 ```
+
+Native library 已内置于 NuGet 包中（`runtimes/{rid}/native/`），无需手动编译。
 
 ## 用法
 
