@@ -1,0 +1,10 @@
+<Project Sdk="Microsoft.NET.Sdk">
+  <PropertyGroup>
+    <TargetFramework>net8.0</TargetFramework>
+    <RootNamespace>TalonDb</RootNamespace>
+    <PackageId>TalonDb</PackageId>
+    <Version>0.1.0</Version>
+    <Description>Talon — 面向本地 AI 的多模融合数据引擎 .NET SDK</Description>
+    <Nullable>enable</Nullable>
+  </PropertyGroup>
+</Project>

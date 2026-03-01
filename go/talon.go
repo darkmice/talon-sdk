@@ -6,7 +6,7 @@ package talon
 
 /*
 #include <stdlib.h>
-#include "include/talon.h"
+#include "../include/talon.h"
 */
 import "C"
 import (

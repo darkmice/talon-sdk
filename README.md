@@ -1,110 +1,43 @@
-# Talon Go SDK
+# Talon SDK
 
-面向本地 AI 的多模融合数据引擎 [Talon](https://github.com/darkmice/talon-bin) 的 Go SDK。
+面向本地 AI 的多模融合数据引擎 [Talon](https://github.com/darkmice/talon-bin) 的多语言 SDK。
 
-通过 cgo 封装 `talon_execute` C ABI，零额外 Go 依赖。
+一个引擎覆盖 SQL + KV + 时序 + 消息队列 + 向量 + 全文搜索 + 图 + 地理空间，所有 SDK 通过 `talon_execute` C ABI 统一调用。
 
-## 安装
+## SDK 列表
 
-预编译库已内嵌在仓库中，`go get` 后直接可用，无需额外步骤。
+| 语言 | 目录 | 安装方式 | 状态 |
+|------|------|---------|------|
+| **Go** | [`go/`](go/) | `go get github.com/darkmice/talon-sdk/go` | ✅ 102 action，100% 覆盖 |
+| **Python** | [`python/`](python/) | `pip install talon-db` | ✅ |
+| **Java** | [`java/`](java/) | Maven 依赖 | ✅ |
+| **Node.js** | [`nodejs/`](nodejs/) | `npm install talon-db` | ✅ |
+| **.NET** | [`dotnet/`](dotnet/) | NuGet 包 | ✅ |
 
-```bash
-go get github.com/darkmice/talon-sdk@v0.1.3
-```
+## 引擎模块
 
-> 支持 macOS (arm64/amd64) 和 Linux (amd64/arm64)。
+| 模块 | 说明 |
+|------|------|
+| SQL | 关系型查询 |
+| KV | 键值存储（TTL / 原子操作 / 分页扫描） |
+| Vector | 向量索引与搜索（HNSW） |
+| TS | 时序引擎 |
+| MQ | 消息队列 |
+| AI | Session / Context / Memory / Trace |
+| FTS | 全文搜索（BM25 + 模糊 + 混合搜索） |
+| Geo | 地理空间（半径 / 矩形 / 围栏） |
+| Graph | 属性图（CRUD + BFS + 最短路径 + PageRank） |
 
-## 模块覆盖
+## 预编译库
 
-| 模块 | 文件 | 说明 |
-|------|------|------|
-| SQL | `talon.go` | SQL 执行 |
-| KV | `talon.go` | 键值存储（含 TTL、分页扫描、原子操作） |
-| Vector | `talon.go` | 向量索引与搜索（HNSW） |
-| TS | `talon_ts.go` | 时序引擎 |
-| MQ | `talon_mq.go` | 消息队列 |
-| AI | `talon_ai.go` | Session / Context / Memory / Trace |
-| FTS | `talon_fts.go` | 全文搜索（BM25 + 模糊 + 混合搜索） |
-| Geo | `talon_geo.go` | 地理空间（半径 / 矩形 / 围栏） |
-| Graph | `talon_graph.go` | 属性图（CRUD + BFS + 最短路径 + PageRank） |
-| Cluster | `talon.go` | 集群管理 |
-| Backup | `talon_ai.go` | 导入导出 |
+`lib/` 目录包含 4 个平台的 `libtalon.a` 静态库，由 talon 主仓库 CI 自动构建并推送：
 
-**102 个 FFI action，100% 覆盖。**
-
-## 快速开始
-
-```go
-package main
-
-import (
-    "fmt"
-    talon "github.com/darkmice/talon-sdk"
-)
-
-func main() {
-    db, err := talon.Open("./my_data")
-    if err != nil {
-        panic(err)
-    }
-    defer db.Close()
-
-    // SQL
-    db.SQL("CREATE TABLE users (id INT, name TEXT)")
-    db.SQL("INSERT INTO users VALUES (1, 'Alice')")
-    rows, _ := db.SQL("SELECT * FROM users")
-    fmt.Println(rows)
-
-    // KV
-    db.KvSet("session:abc", `{"user":"Alice"}`, nil)
-    val, _ := db.KvGet("session:abc")
-    fmt.Println(*val)
-
-    // Vector (RAG embedding)
-    db.VectorInsert("embeddings", 1, []float32{0.1, 0.2, 0.3})
-    results, _ := db.VectorSearch("embeddings", []float32{0.1, 0.2, 0.3}, 5, "cosine")
-    fmt.Println(string(results))
-
-    // FTS
-    db.FtsCreateIndex("articles")
-    db.FtsIndex("articles", "doc1", map[string]string{
-        "title": "Talon Database", "body": "A multi-model engine for AI",
-    })
-    hits, _ := db.FtsSearch("articles", "talon", 10)
-    fmt.Println(string(hits))
-
-    // Graph (knowledge graph)
-    db.GraphCreate("knowledge")
-    id1, _ := db.GraphAddVertex("knowledge", "concept", map[string]string{"name": "AI"})
-    id2, _ := db.GraphAddVertex("knowledge", "concept", map[string]string{"name": "Database"})
-    db.GraphAddEdge("knowledge", id1, id2, "related_to", nil)
-    neighbors, _ := db.GraphNeighbors("knowledge", id1, "out")
-    fmt.Println(neighbors)
-
-    // Geo
-    db.GeoCreate("pois")
-    db.GeoAdd("pois", "office", 116.397, 39.908)
-    nearby, _ := db.GeoSearch("pois", 116.4, 39.9, 5000, "m", nil)
-    fmt.Println(string(nearby))
-
-    // AI Session (对话管理)
-    db.AiCreateSession("chat-1", map[string]string{"model": "gpt-4"}, nil)
-    db.AiAppendMessage("chat-1", map[string]interface{}{
-        "role": "user", "content": "Hello!",
-    })
-    history, _ := db.AiGetHistory("chat-1", nil)
-    fmt.Println(string(history))
-}
-```
-
-## 支持平台
-
-| OS | Arch | 状态 |
+| OS | Arch | 目录 |
 |----|------|------|
-| macOS | arm64 (Apple Silicon) | ✅ |
-| macOS | amd64 (Intel) | ✅ |
-| Linux | amd64 | ✅ |
-| Linux | arm64 | ✅ |
+| macOS | arm64 (Apple Silicon) | `lib/darwin_arm64/` |
+| macOS | amd64 (Intel) | `lib/darwin_amd64/` |
+| Linux | amd64 | `lib/linux_amd64/` |
+| Linux | arm64 | `lib/linux_arm64/` |
 
 ## License
 

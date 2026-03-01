@@ -3,3 +3,16 @@
 *.so
 *.dll
 *.tar.gz
+
+# Python
+__pycache__/
+*.pyc
+*.egg-info/
+dist/
+build/
+
+# Java
+java/target/
+
+# Node
+node_modules/

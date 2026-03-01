@@ -1,0 +1,16 @@
+{
+  "name": "talon-db",
+  "version": "0.1.0",
+  "description": "Talon — 面向本地 AI 的多模融合数据引擎 Node.js SDK",
+  "main": "index.js",
+  "types": "index.d.ts",
+  "keywords": ["database", "embedded", "ai", "vector", "timeseries"],
+  "license": "MIT",
+  "engines": {
+    "node": ">=14"
+  },
+  "dependencies": {
+    "ffi-napi": "^4.0.3",
+    "ref-napi": "^3.0.3"
+  }
+}
