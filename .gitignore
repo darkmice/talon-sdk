@@ -1,8 +1,8 @@
 # Build artifacts
-*.dylib
-*.so
-*.dll
 *.tar.gz
+
+# Only ignore dynamic libs outside lib/ directory
+# lib/ contains pre-built binaries committed by CI
 
 # Python
 __pycache__/

@@ -26,19 +26,24 @@ function findLib(libPath) {
   if (env && fs.existsSync(env)) return env;
 
   const plat = os.platform();
+  const arch = os.arch();
   const name = plat === 'darwin' ? 'libtalon.dylib'
     : plat === 'win32' ? 'talon.dll' : 'libtalon.so';
 
-  // 同目录
+  // 平台目录名
+  const platArch = arch === 'arm64' ? 'arm64' : 'amd64';
+  const platDir = plat === 'darwin' ? `darwin_${platArch}`
+    : plat === 'win32' ? `windows_${platArch}` : `linux_${platArch}`;
+
+  // 1. SDK 内嵌库: talon-sdk/lib/{platform}/
+  const sdkRoot = path.resolve(__dirname, '..');
+  const bundled = path.join(sdkRoot, 'lib', platDir, name);
+  if (fs.existsSync(bundled)) return bundled;
+
+  // 2. 同目录
   const local = path.join(__dirname, name);
   if (fs.existsSync(local)) return local;
 
-  // 项目 target
-  const root = path.resolve(__dirname, '..', '..');
-  for (const profile of ['release', 'debug']) {
-    const candidate = path.join(root, 'target', profile, name);
-    if (fs.existsSync(candidate)) return candidate;
-  }
   return name;
 }
 

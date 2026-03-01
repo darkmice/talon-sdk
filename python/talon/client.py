@@ -73,30 +73,35 @@ def _python_to_value(v):
 def _find_lib() -> str:
     """查找 libtalon 动态库路径。"""
     system = platform.system()
+    machine = platform.machine()
     if system == "Darwin":
         name = "libtalon.dylib"
+        arch = "arm64" if machine == "arm64" else "amd64"
+        plat_dir = f"darwin_{arch}"
     elif system == "Windows":
         name = "talon.dll"
+        plat_dir = "windows_amd64"
     else:
         name = "libtalon.so"
+        arch = "arm64" if machine == "aarch64" else "amd64"
+        plat_dir = f"linux_{arch}"
 
     # 1. 环境变量
     env_path = os.environ.get("TALON_LIB_PATH")
     if env_path and os.path.isfile(env_path):
         return env_path
 
-    # 2. 同目录
+    # 2. SDK 内嵌库: talon-sdk/lib/{platform}/
     here = os.path.dirname(os.path.abspath(__file__))
+    sdk_root = os.path.dirname(os.path.dirname(here))
+    bundled = os.path.join(sdk_root, "lib", plat_dir, name)
+    if os.path.isfile(bundled):
+        return bundled
+
+    # 3. 同目录
     local = os.path.join(here, name)
     if os.path.isfile(local):
         return local
-
-    # 3. 项目 target/release
-    project_root = os.path.dirname(os.path.dirname(os.path.dirname(here)))
-    for profile in ("release", "debug"):
-        candidate = os.path.join(project_root, "target", profile, name)
-        if os.path.isfile(candidate):
-            return candidate
 
     return name  # 回退到系统搜索路径
 
