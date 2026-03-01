@@ -1,8 +1,13 @@
 # Build artifacts
 *.tar.gz
 
-# Only ignore dynamic libs outside lib/ directory
-# lib/ contains pre-built binaries committed by CI
+# Native libraries (each SDK now auto-downloads from GitHub Releases)
+lib/
+
+# Auto-downloaded native libs
+nodejs/native/
+python/talon/native/
+dotnet/Talon/runtimes/
 
 # Python
 __pycache__/

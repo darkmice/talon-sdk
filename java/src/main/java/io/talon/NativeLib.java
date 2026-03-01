@@ -6,6 +6,9 @@ import com.sun.jna.Pointer;
 import com.sun.jna.ptr.PointerByReference;
 
 import java.io.File;
+import java.io.FileOutputStream;
+import java.io.InputStream;
+import java.io.IOException;
 
 /**
  * Talon C ABI 原生函数绑定（JNA）。
@@ -21,14 +24,68 @@ interface NativeLib extends Library {
             return Native.load(envPath, NativeLib.class);
         }
 
-        // 2. SDK 内嵌库: talon-sdk/lib/{platform}/
+        // 2. classpath resources (Maven/Gradle JAR 内嵌)
+        String fromResource = extractFromResources();
+        if (fromResource != null) {
+            return Native.load(fromResource, NativeLib.class);
+        }
+
+        // 3. SDK 内嵌库: talon-sdk/lib/{platform}/
         String bundled = findBundledLib();
         if (bundled != null) {
             return Native.load(bundled, NativeLib.class);
         }
 
-        // 3. 系统搜索路径
+        // 4. 系统搜索路径
         return Native.load("talon", NativeLib.class);
+    }
+
+    /**
+     * 从 JAR classpath resources 中提取 native lib 到临时目录。
+     * 资源路径: native/{os}/{arch}/{libName}
+     */
+    static String extractFromResources() {
+        String os = System.getProperty("os.name", "").toLowerCase();
+        String arch = System.getProperty("os.arch", "");
+
+        String osDir, archDir, libName;
+        if (os.contains("mac") || os.contains("darwin")) {
+            osDir = "darwin";
+            archDir = (arch.contains("aarch64") || arch.contains("arm64")) ? "arm64" : "amd64";
+            libName = "libtalon.dylib";
+        } else if (os.contains("win")) {
+            osDir = "windows";
+            archDir = "amd64";
+            libName = "talon.dll";
+        } else {
+            osDir = "linux";
+            if (arch.contains("aarch64") || arch.contains("arm64")) archDir = "arm64";
+            else if (arch.contains("loongarch64")) archDir = "loongarch64";
+            else if (arch.contains("riscv64")) archDir = "riscv64";
+            else archDir = "amd64";
+            libName = "libtalon.so";
+        }
+
+        String resourcePath = "native/" + osDir + "/" + archDir + "/" + libName;
+        try (InputStream in = NativeLib.class.getClassLoader().getResourceAsStream(resourcePath)) {
+            if (in == null) return null;
+
+            File tmpDir = new File(System.getProperty("java.io.tmpdir"), "talon-native");
+            tmpDir.mkdirs();
+            File tmpLib = new File(tmpDir, libName);
+            if (tmpLib.exists() && tmpLib.length() > 0) {
+                return tmpLib.getAbsolutePath();
+            }
+            try (FileOutputStream out = new FileOutputStream(tmpLib)) {
+                byte[] buf = new byte[65536];
+                int n;
+                while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
+            }
+            tmpLib.deleteOnExit();
+            return tmpLib.getAbsolutePath();
+        } catch (IOException e) {
+            return null;
+        }
     }
 
     static String findBundledLib() {

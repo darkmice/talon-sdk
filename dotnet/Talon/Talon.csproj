@@ -3,8 +3,23 @@
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>TalonDb</RootNamespace>
     <PackageId>TalonDb</PackageId>
-    <Version>0.1.0</Version>
-    <Description>Talon — 面向本地 AI 的多模融合数据引擎 .NET SDK</Description>
+    <Version>0.1.3</Version>
+    <Description>Talon — AI-native multi-model data engine (SQL + KV + Vector + TimeSeries + MQ + FTS + GEO + Graph + AI)</Description>
     <Nullable>enable</Nullable>
+    <Authors>Talon Contributors</Authors>
+    <PackageLicenseExpression>MIT</PackageLicenseExpression>
+    <PackageProjectUrl>https://github.com/darkmice/talon</PackageProjectUrl>
+    <RepositoryUrl>https://github.com/darkmice/talon-sdk</RepositoryUrl>
+    <PackageTags>database;embedded;ai;vector;timeseries;kv;rag;agent</PackageTags>
+    <PackageReadmeFile>README.md</PackageReadmeFile>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Include="..\README.md" Pack="true" PackagePath="\" />
+  </ItemGroup>
+
+  <!-- Native libraries: runtimes/{rid}/native/ -->
+  <ItemGroup>
+    <None Include="runtimes\**\*" Pack="true" PackagePath="runtimes" CopyToOutputDirectory="PreserveNewest" />
+  </ItemGroup>
 </Project>

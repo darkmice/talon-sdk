@@ -19,46 +19,54 @@ namespace TalonDb
                 NativeLibrary.Load(bundled);
         }
 
-        private static string FindBundledLib()
+        private static string? FindBundledLib()
         {
-            string platDir;
+            string rid;
             string libName;
+            string platDir;
             if (RuntimeInformation.IsOSPlatform(OSPlatform.OSX))
             {
-                var arch = RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "amd64";
-                platDir = $"darwin_{arch}";
+                var arch = RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "x64";
+                rid = $"osx-{arch}";
+                platDir = $"darwin_{(arch == "arm64" ? "arm64" : "amd64")}";
                 libName = "libtalon.dylib";
             }
             else if (RuntimeInformation.IsOSPlatform(OSPlatform.Windows))
             {
+                rid = "win-x64";
                 platDir = "windows_amd64";
                 libName = "talon.dll";
             }
             else
             {
                 string arch;
+                string ridArch;
                 if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
-                    arch = "arm64";
+                { arch = "arm64"; ridArch = "arm64"; }
                 else if (RuntimeInformation.OSArchitecture.ToString() == "LoongArch64")
-                    arch = "loongarch64";
+                { arch = "loongarch64"; ridArch = "loongarch64"; }
                 else if (RuntimeInformation.OSArchitecture.ToString() == "RiscV64")
-                    arch = "riscv64";
+                { arch = "riscv64"; ridArch = "riscv64"; }
                 else
-                    arch = "amd64";
+                { arch = "amd64"; ridArch = "x64"; }
+                rid = $"linux-{ridArch}";
                 platDir = $"linux_{arch}";
                 libName = "libtalon.so";
             }
 
-            // 环境变量优先
+            // 1. 环境变量优先
             var envPath = Environment.GetEnvironmentVariable("TALON_LIB_PATH");
             if (!string.IsNullOrEmpty(envPath) && File.Exists(envPath))
                 return envPath;
 
-            // SDK 内嵌库: talon-sdk/lib/{platform}/
             var asmDir = Path.GetDirectoryName(typeof(NativeLib).Assembly.Location);
             if (asmDir != null)
             {
-                // dotnet/Talon/bin/... -> talon-sdk/
+                // 2. NuGet runtimes/{rid}/native/ (dotnet pack 标准布局)
+                var nugetPath = Path.Combine(asmDir, "runtimes", rid, "native", libName);
+                if (File.Exists(nugetPath)) return nugetPath;
+
+                // 3. SDK 开发布局: talon-sdk/lib/{platform}/
                 var sdkRoot = Path.GetFullPath(Path.Combine(asmDir, "..", "..", ".."));
                 var bundled = Path.Combine(sdkRoot, "lib", platDir, libName);
                 if (File.Exists(bundled)) return bundled;

@@ -39,12 +39,16 @@ function findLib(libPath) {
   const platDir = plat === 'darwin' ? `darwin_${platArch}`
     : plat === 'win32' ? `windows_${platArch}` : `linux_${platArch}`;
 
-  // 1. SDK 内嵌库: talon-sdk/lib/{platform}/
+  // 1. npm 包内 native/ 目录 (postinstall 下载)
+  const nativeDir = path.join(__dirname, 'native', name);
+  if (fs.existsSync(nativeDir)) return nativeDir;
+
+  // 2. SDK 内嵌库: talon-sdk/lib/{platform}/
   const sdkRoot = path.resolve(__dirname, '..');
   const bundled = path.join(sdkRoot, 'lib', platDir, name);
   if (fs.existsSync(bundled)) return bundled;
 
-  // 2. 同目录
+  // 3. 同目录
   const local = path.join(__dirname, name);
   if (fs.existsSync(local)) return local;
 
