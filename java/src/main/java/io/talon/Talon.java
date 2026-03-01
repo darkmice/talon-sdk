@@ -1,6 +1,7 @@
 package io.talon;
 
 import com.google.gson.Gson;
+import com.google.gson.JsonArray;
 import com.google.gson.JsonElement;
 import com.google.gson.JsonObject;
 import com.sun.jna.Pointer;
@@ -158,6 +159,41 @@ public class Talon implements AutoCloseable {
 
     public JsonElement kvTtl(String key) {
         return execute("kv", "ttl", Map.of("key", key));
+    }
+
+    public long kvIncrBy(String key, long delta) {
+        return execute("kv", "incrby", Map.of("key", key, "delta", delta))
+            .getAsJsonObject().get("value").getAsLong();
+    }
+
+    public long kvDecrBy(String key, long delta) {
+        return execute("kv", "decrby", Map.of("key", key, "delta", delta))
+            .getAsJsonObject().get("value").getAsLong();
+    }
+
+    public boolean kvSetNx(String key, String value, Long ttl) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("key", key); p.put("value", value);
+        if (ttl != null) p.put("ttl", ttl);
+        return execute("kv", "setnx", p)
+            .getAsJsonObject().get("set").getAsBoolean();
+    }
+
+    public JsonElement kvKeysLimit(String prefix, long offset, long limit) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("prefix", prefix); p.put("offset", offset); p.put("limit", limit);
+        return execute("kv", "keys_limit", p);
+    }
+
+    public JsonElement kvScanLimit(String prefix, long offset, long limit) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("prefix", prefix); p.put("offset", offset); p.put("limit", limit);
+        return execute("kv", "scan_limit", p);
+    }
+
+    public long kvCount() {
+        return execute("kv", "count")
+            .getAsJsonObject().get("count").getAsLong();
     }
 
     // ── TS ──
@@ -452,5 +488,290 @@ public class Talon implements AutoCloseable {
     public long importDb(String dir) {
         return execute("backup", "import", Map.of("dir", dir))
             .getAsJsonObject().get("imported").getAsLong();
+    }
+
+    // ── FTS ──
+
+    public void ftsCreateIndex(String name) {
+        execute("fts", "create_index", Map.of("name", name));
+    }
+
+    public void ftsDropIndex(String name) {
+        execute("fts", "drop_index", Map.of("name", name));
+    }
+
+    public void ftsIndex(String name, String docId, Map<String, String> fields) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("name", name); p.put("doc_id", docId); p.put("fields", fields);
+        execute("fts", "index", p);
+    }
+
+    public int ftsIndexBatch(String name, List<Map<String, Object>> docs) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("name", name); p.put("docs", docs);
+        return execute("fts", "index_batch", p)
+            .getAsJsonObject().get("count").getAsInt();
+    }
+
+    public boolean ftsDelete(String name, String docId) {
+        return execute("fts", "delete", Map.of("name", name, "doc_id", docId))
+            .getAsJsonObject().get("deleted").getAsBoolean();
+    }
+
+    public JsonElement ftsGet(String name, String docId) {
+        return execute("fts", "get", Map.of("name", name, "doc_id", docId));
+    }
+
+    public JsonElement ftsSearch(String name, String query, int limit) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("name", name); p.put("query", query); p.put("limit", limit);
+        return execute("fts", "search", p);
+    }
+
+    public JsonElement ftsSearchFuzzy(String name, String query, int maxDist, int limit) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("name", name); p.put("query", query);
+        p.put("max_dist", maxDist); p.put("limit", limit);
+        return execute("fts", "search_fuzzy", p);
+    }
+
+    public JsonElement ftsHybridSearch(String ftsIdx, String vecIdx,
+                                        String query, float[] vector,
+                                        Map<String, Object> opts) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("name", ftsIdx); p.put("vec_index", vecIdx);
+        p.put("query", query); p.put("vector", vector);
+        if (opts != null) p.putAll(opts);
+        return execute("fts", "hybrid_search", p);
+    }
+
+    public void ftsAddAlias(String alias, String index) {
+        execute("fts", "add_alias", Map.of("alias", alias, "index", index));
+    }
+
+    public void ftsRemoveAlias(String alias) {
+        execute("fts", "remove_alias", Map.of("alias", alias));
+    }
+
+    public long ftsReindex(String name) {
+        return execute("fts", "reindex", Map.of("name", name))
+            .getAsJsonObject().get("reindexed").getAsLong();
+    }
+
+    public void ftsCloseIndex(String name) {
+        execute("fts", "close_index", Map.of("name", name));
+    }
+
+    public void ftsOpenIndex(String name) {
+        execute("fts", "open_index", Map.of("name", name));
+    }
+
+    public JsonElement ftsGetMapping(String name) {
+        return execute("fts", "get_mapping", Map.of("name", name));
+    }
+
+    public JsonElement ftsListIndexes() {
+        return execute("fts", "list_indexes");
+    }
+
+    // ── Geo ──
+
+    public void geoCreate(String name) {
+        execute("geo", "create", Map.of("name", name));
+    }
+
+    public void geoAdd(String name, String key, double lng, double lat) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("name", name); p.put("key", key);
+        p.put("lng", lng); p.put("lat", lat);
+        execute("geo", "add", p);
+    }
+
+    public int geoAddBatch(String name, List<Map<String, Object>> members) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("name", name); p.put("members", members);
+        return execute("geo", "add_batch", p)
+            .getAsJsonObject().get("count").getAsInt();
+    }
+
+    public JsonElement geoPos(String name, String key) {
+        return execute("geo", "pos", Map.of("name", name, "key", key));
+    }
+
+    public boolean geoDel(String name, String key) {
+        return execute("geo", "del", Map.of("name", name, "key", key))
+            .getAsJsonObject().get("deleted").getAsBoolean();
+    }
+
+    public JsonElement geoDist(String name, String key1, String key2, String unit) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("name", name); p.put("key1", key1); p.put("key2", key2);
+        p.put("unit", unit != null ? unit : "m");
+        return execute("geo", "dist", p);
+    }
+
+    public JsonElement geoSearch(String name, double lng, double lat,
+                                  double radius, String unit, Integer count) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("name", name); p.put("lng", lng); p.put("lat", lat);
+        p.put("radius", radius); p.put("unit", unit != null ? unit : "m");
+        if (count != null) p.put("count", count);
+        return execute("geo", "search", p);
+    }
+
+    public JsonElement geoSearchBox(String name, double minLng, double minLat,
+                                     double maxLng, double maxLat, Integer count) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("name", name); p.put("min_lng", minLng); p.put("min_lat", minLat);
+        p.put("max_lng", maxLng); p.put("max_lat", maxLat);
+        if (count != null) p.put("count", count);
+        return execute("geo", "search_box", p);
+    }
+
+    public JsonElement geoFence(String name, String key, double centerLng,
+                                 double centerLat, double radius, String unit) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("name", name); p.put("key", key);
+        p.put("center_lng", centerLng); p.put("center_lat", centerLat);
+        p.put("radius", radius); p.put("unit", unit != null ? unit : "m");
+        return execute("geo", "fence", p);
+    }
+
+    public String[] geoMembers(String name) {
+        JsonElement data = execute("geo", "members", Map.of("name", name));
+        JsonArray arr = data.getAsJsonObject().get("members").getAsJsonArray();
+        String[] members = new String[arr.size()];
+        for (int i = 0; i < arr.size(); i++) {
+            members[i] = arr.get(i).getAsString();
+        }
+        return members;
+    }
+
+    // ── Graph ──
+
+    public void graphCreate(String graph) {
+        execute("graph", "create", Map.of("graph", graph));
+    }
+
+    public long graphAddVertex(String graph, String label,
+                                Map<String, String> properties) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("graph", graph); p.put("label", label);
+        if (properties != null) p.put("properties", properties);
+        return execute("graph", "add_vertex", p)
+            .getAsJsonObject().get("vertex_id").getAsLong();
+    }
+
+    public JsonElement graphGetVertex(String graph, long id) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("graph", graph); p.put("id", id);
+        return execute("graph", "get_vertex", p);
+    }
+
+    public void graphUpdateVertex(String graph, long id,
+                                   Map<String, String> properties) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("graph", graph); p.put("id", id);
+        if (properties != null) p.put("properties", properties);
+        execute("graph", "update_vertex", p);
+    }
+
+    public void graphDeleteVertex(String graph, long id) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("graph", graph); p.put("id", id);
+        execute("graph", "delete_vertex", p);
+    }
+
+    public long graphAddEdge(String graph, long from, long to,
+                              String label, Map<String, String> properties) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("graph", graph); p.put("from", from);
+        p.put("to", to); p.put("label", label);
+        if (properties != null) p.put("properties", properties);
+        return execute("graph", "add_edge", p)
+            .getAsJsonObject().get("edge_id").getAsLong();
+    }
+
+    public JsonElement graphGetEdge(String graph, long id) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("graph", graph); p.put("id", id);
+        return execute("graph", "get_edge", p);
+    }
+
+    public void graphDeleteEdge(String graph, long id) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("graph", graph); p.put("id", id);
+        execute("graph", "delete_edge", p);
+    }
+
+    public JsonElement graphNeighbors(String graph, long id, String direction) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("graph", graph); p.put("id", id);
+        p.put("direction", direction != null ? direction : "out");
+        return execute("graph", "neighbors", p);
+    }
+
+    public JsonElement graphOutEdges(String graph, long id) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("graph", graph); p.put("id", id);
+        return execute("graph", "out_edges", p);
+    }
+
+    public JsonElement graphInEdges(String graph, long id) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("graph", graph); p.put("id", id);
+        return execute("graph", "in_edges", p);
+    }
+
+    public JsonElement graphVerticesByLabel(String graph, String label) {
+        return execute("graph", "vertices_by_label",
+            Map.of("graph", graph, "label", label));
+    }
+
+    public long graphVertexCount(String graph) {
+        return execute("graph", "vertex_count", Map.of("graph", graph))
+            .getAsJsonObject().get("count").getAsLong();
+    }
+
+    public long graphEdgeCount(String graph) {
+        return execute("graph", "edge_count", Map.of("graph", graph))
+            .getAsJsonObject().get("count").getAsLong();
+    }
+
+    public JsonElement graphBfs(String graph, long start, int maxDepth, String direction) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("graph", graph); p.put("start", start);
+        p.put("max_depth", maxDepth);
+        p.put("direction", direction != null ? direction : "out");
+        return execute("graph", "bfs", p);
+    }
+
+    public JsonElement graphShortestPath(String graph, long from, long to, int maxDepth) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("graph", graph); p.put("from", from);
+        p.put("to", to); p.put("max_depth", maxDepth);
+        return execute("graph", "shortest_path", p);
+    }
+
+    public JsonElement graphWeightedShortestPath(String graph, long from, long to,
+                                                  int maxDepth, String weightKey) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("graph", graph); p.put("from", from);
+        p.put("to", to); p.put("max_depth", maxDepth);
+        p.put("weight_key", weightKey != null ? weightKey : "weight");
+        return execute("graph", "weighted_shortest_path", p);
+    }
+
+    public JsonElement graphDegreeCentrality(String graph, int limit) {
+        return execute("graph", "degree_centrality",
+            Map.of("graph", graph, "limit", limit));
+    }
+
+    public JsonElement graphPagerank(String graph, double damping,
+                                      int iterations, int limit) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("graph", graph); p.put("damping", damping);
+        p.put("iterations", iterations); p.put("limit", limit);
+        return execute("graph", "pagerank", p);
     }
 }

@@ -155,6 +155,20 @@ class Talon {
   kvExpire(key, seconds) { this._execute('kv', 'expire', { key, seconds }); }
   kvTtl(key) { return this._execute('kv', 'ttl', { key }).ttl; }
 
+  kvIncrBy(key, delta) { return this._execute('kv', 'incrby', { key, delta }).value || 0; }
+  kvDecrBy(key, delta) { return this._execute('kv', 'decrby', { key, delta }).value || 0; }
+  kvSetNx(key, value, ttl) {
+    const p = { key, value }; if (ttl != null) p.ttl = ttl;
+    return this._execute('kv', 'setnx', p).set || false;
+  }
+  kvKeysLimit(prefix = '', offset = 0, limit = 100) {
+    return this._execute('kv', 'keys_limit', { prefix, offset, limit }).keys || [];
+  }
+  kvScanLimit(prefix = '', offset = 0, limit = 100) {
+    return this._execute('kv', 'scan_limit', { prefix, offset, limit });
+  }
+  kvCount() { return this._execute('kv', 'count').count || 0; }
+
   // ── TS ──
   tsCreate(name, tags = [], fields = []) {
     this._execute('ts', 'create', { name, tags, fields });
@@ -284,6 +298,140 @@ class Talon {
     return this._execute('backup', 'export', p).exported || 0;
   }
   importDb(dir) { return this._execute('backup', 'import', { dir }).imported || 0; }
+
+  // ── FTS ──
+  ftsCreateIndex(name) { this._execute('fts', 'create_index', { name }); }
+  ftsDropIndex(name) { this._execute('fts', 'drop_index', { name }); }
+  ftsIndex(name, docId, fields) {
+    this._execute('fts', 'index', { name, doc_id: docId, fields });
+  }
+  ftsIndexBatch(name, docs) {
+    return this._execute('fts', 'index_batch', { name, docs }).count || 0;
+  }
+  ftsDelete(name, docId) {
+    return this._execute('fts', 'delete', { name, doc_id: docId }).deleted || false;
+  }
+  ftsGet(name, docId) {
+    return this._execute('fts', 'get', { name, doc_id: docId });
+  }
+  ftsSearch(name, query, limit = 10) {
+    return this._execute('fts', 'search', { name, query, limit });
+  }
+  ftsSearchFuzzy(name, query, maxDist = 1, limit = 10) {
+    return this._execute('fts', 'search_fuzzy', { name, query, max_dist: maxDist, limit });
+  }
+  ftsHybridSearch(ftsIdx, vecIdx, query, vector, opts = {}) {
+    const p = {
+      name: ftsIdx, vec_index: vecIdx, query, vector,
+      metric: opts.metric || 'cosine', limit: opts.limit || 10,
+      fts_weight: opts.ftsWeight || 0.5, vec_weight: opts.vecWeight || 0.5,
+    };
+    if (opts.numCandidates != null) p.num_candidates = opts.numCandidates;
+    if (opts.preFilter) p.pre_filter = opts.preFilter;
+    return this._execute('fts', 'hybrid_search', p);
+  }
+  ftsAddAlias(alias, index) { this._execute('fts', 'add_alias', { alias, index }); }
+  ftsRemoveAlias(alias) { this._execute('fts', 'remove_alias', { alias }); }
+  ftsReindex(name) { return this._execute('fts', 'reindex', { name }).reindexed || 0; }
+  ftsCloseIndex(name) { this._execute('fts', 'close_index', { name }); }
+  ftsOpenIndex(name) { this._execute('fts', 'open_index', { name }); }
+  ftsGetMapping(name) { return this._execute('fts', 'get_mapping', { name }); }
+  ftsListIndexes() { return this._execute('fts', 'list_indexes'); }
+
+  // ── Geo ──
+  geoCreate(name) { this._execute('geo', 'create', { name }); }
+  geoAdd(name, key, lng, lat) {
+    this._execute('geo', 'add', { name, key, lng, lat });
+  }
+  geoAddBatch(name, members) {
+    return this._execute('geo', 'add_batch', { name, members }).count || 0;
+  }
+  geoPos(name, key) { return this._execute('geo', 'pos', { name, key }); }
+  geoDel(name, key) {
+    return this._execute('geo', 'del', { name, key }).deleted || false;
+  }
+  geoDist(name, key1, key2, unit = 'm') {
+    const data = this._execute('geo', 'dist', { name, key1, key2, unit });
+    return data.dist != null ? data.dist : null;
+  }
+  geoSearch(name, lng, lat, radius, unit = 'm', count) {
+    const p = { name, lng, lat, radius, unit };
+    if (count != null) p.count = count;
+    return this._execute('geo', 'search', p);
+  }
+  geoSearchBox(name, minLng, minLat, maxLng, maxLat, count) {
+    const p = { name, min_lng: minLng, min_lat: minLat, max_lng: maxLng, max_lat: maxLat };
+    if (count != null) p.count = count;
+    return this._execute('geo', 'search_box', p);
+  }
+  geoFence(name, key, centerLng, centerLat, radius, unit = 'm') {
+    const data = this._execute('geo', 'fence', {
+      name, key, center_lng: centerLng, center_lat: centerLat, radius, unit,
+    });
+    return data.inside != null ? data.inside : null;
+  }
+  geoMembers(name) { return this._execute('geo', 'members', { name }).members || []; }
+
+  // ── Graph ──
+  graphCreate(graph) { this._execute('graph', 'create', { graph }); }
+  graphAddVertex(graph, label, properties) {
+    const p = { graph, label }; if (properties) p.properties = properties;
+    return this._execute('graph', 'add_vertex', p).vertex_id || 0;
+  }
+  graphGetVertex(graph, id) {
+    return this._execute('graph', 'get_vertex', { graph, id });
+  }
+  graphUpdateVertex(graph, id, properties) {
+    this._execute('graph', 'update_vertex', { graph, id, properties });
+  }
+  graphDeleteVertex(graph, id) {
+    this._execute('graph', 'delete_vertex', { graph, id });
+  }
+  graphAddEdge(graph, from, to, label, properties) {
+    const p = { graph, from, to, label }; if (properties) p.properties = properties;
+    return this._execute('graph', 'add_edge', p).edge_id || 0;
+  }
+  graphGetEdge(graph, id) {
+    return this._execute('graph', 'get_edge', { graph, id });
+  }
+  graphDeleteEdge(graph, id) {
+    this._execute('graph', 'delete_edge', { graph, id });
+  }
+  graphNeighbors(graph, id, direction = 'out') {
+    return this._execute('graph', 'neighbors', { graph, id, direction }).neighbors || [];
+  }
+  graphOutEdges(graph, id) {
+    return this._execute('graph', 'out_edges', { graph, id });
+  }
+  graphInEdges(graph, id) {
+    return this._execute('graph', 'in_edges', { graph, id });
+  }
+  graphVerticesByLabel(graph, label) {
+    return this._execute('graph', 'vertices_by_label', { graph, label });
+  }
+  graphVertexCount(graph) {
+    return this._execute('graph', 'vertex_count', { graph }).count || 0;
+  }
+  graphEdgeCount(graph) {
+    return this._execute('graph', 'edge_count', { graph }).count || 0;
+  }
+  graphBfs(graph, start, maxDepth = 3, direction = 'out') {
+    return this._execute('graph', 'bfs', { graph, start, max_depth: maxDepth, direction });
+  }
+  graphShortestPath(graph, from, to, maxDepth = 10) {
+    return this._execute('graph', 'shortest_path', { graph, from, to, max_depth: maxDepth });
+  }
+  graphWeightedShortestPath(graph, from, to, maxDepth = 10, weightKey = 'weight') {
+    return this._execute('graph', 'weighted_shortest_path', {
+      graph, from, to, max_depth: maxDepth, weight_key: weightKey,
+    });
+  }
+  graphDegreeCentrality(graph, limit = 10) {
+    return this._execute('graph', 'degree_centrality', { graph, limit });
+  }
+  graphPagerank(graph, damping = 0.85, iterations = 20, limit = 10) {
+    return this._execute('graph', 'pagerank', { graph, damping, iterations, limit });
+  }
 }
 
 module.exports = { Talon, TalonError };

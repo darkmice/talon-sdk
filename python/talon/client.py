@@ -284,6 +284,45 @@ class Talon(AiMixin):
         data = self._execute("kv", "ttl", {"key": key})
         return data.get("ttl")
 
+    def kv_incr_by(self, key: str, delta: int) -> int:
+        """KV INCRBY 按 delta 自增。"""
+        data = self._execute("kv", "incrby", {"key": key, "delta": delta})
+        return data.get("value", 0)
+
+    def kv_decr_by(self, key: str, delta: int) -> int:
+        """KV DECRBY 按 delta 自减。"""
+        data = self._execute("kv", "decrby", {"key": key, "delta": delta})
+        return data.get("value", 0)
+
+    def kv_set_nx(self, key: str, value: str,
+                  ttl: Optional[int] = None) -> bool:
+        """KV SETNX 仅在 key 不存在时写入，返回是否成功。"""
+        p: Dict[str, Any] = {"key": key, "value": value}
+        if ttl is not None:
+            p["ttl"] = ttl
+        data = self._execute("kv", "setnx", p)
+        return data.get("set", False)
+
+    def kv_keys_limit(self, prefix: str = "",
+                      offset: int = 0, limit: int = 100) -> List[str]:
+        """KV KEYS 分页前缀扫描。"""
+        data = self._execute("kv", "keys_limit", {
+            "prefix": prefix, "offset": offset, "limit": limit,
+        })
+        return data.get("keys", [])
+
+    def kv_scan_limit(self, prefix: str = "",
+                      offset: int = 0, limit: int = 100) -> Any:
+        """KV SCAN 分页 KV 扫描，返回原始结果。"""
+        return self._execute("kv", "scan_limit", {
+            "prefix": prefix, "offset": offset, "limit": limit,
+        })
+
+    def kv_count(self) -> int:
+        """KV COUNT 获取 Key 总数。"""
+        data = self._execute("kv", "count")
+        return data.get("count", 0)
+
     # ── TS (时序) ──
 
     def ts_create(self, name: str,
@@ -507,3 +546,344 @@ class Talon(AiMixin):
     def health_check(self) -> Dict:
         """执行健康检查。"""
         return self._execute("health_check")
+
+    # ── FTS (全文搜索) ──
+
+    def fts_create_index(self, name: str):
+        """创建全文索引。"""
+        self._execute("fts", "create_index", {"name": name})
+
+    def fts_drop_index(self, name: str):
+        """删除全文索引。"""
+        self._execute("fts", "drop_index", {"name": name})
+
+    def fts_index(self, name: str, doc_id: str,
+                  fields: Dict[str, str]):
+        """索引单个文档。fields 为 field_name → text 映射。"""
+        self._execute("fts", "index", {
+            "name": name, "doc_id": doc_id, "fields": fields,
+        })
+
+    def fts_index_batch(self, name: str,
+                        docs: List[Dict]) -> int:
+        """批量索引文档。每个 doc 须含 doc_id 和 fields。"""
+        data = self._execute("fts", "index_batch", {
+            "name": name, "docs": docs,
+        })
+        return data.get("count", 0)
+
+    def fts_delete(self, name: str, doc_id: str) -> bool:
+        """删除文档，返回是否存在并被删除。"""
+        data = self._execute("fts", "delete", {
+            "name": name, "doc_id": doc_id,
+        })
+        return data.get("deleted", False)
+
+    def fts_get(self, name: str, doc_id: str) -> Any:
+        """获取文档字段。"""
+        return self._execute("fts", "get", {
+            "name": name, "doc_id": doc_id,
+        })
+
+    def fts_search(self, name: str, query: str,
+                   limit: int = 10) -> Any:
+        """BM25 精确搜索。"""
+        return self._execute("fts", "search", {
+            "name": name, "query": query, "limit": limit,
+        })
+
+    def fts_search_fuzzy(self, name: str, query: str,
+                         max_dist: int = 1,
+                         limit: int = 10) -> Any:
+        """模糊搜索。"""
+        return self._execute("fts", "search_fuzzy", {
+            "name": name, "query": query,
+            "max_dist": max_dist, "limit": limit,
+        })
+
+    def fts_hybrid_search(self, fts_index: str, vec_index: str,
+                          query: str, vector: List[float],
+                          metric: str = "cosine",
+                          limit: int = 10,
+                          fts_weight: float = 0.5,
+                          vec_weight: float = 0.5,
+                          num_candidates: Optional[int] = None,
+                          pre_filter: Optional[Dict] = None) -> Any:
+        """混合搜索（BM25 + 向量）。"""
+        p: Dict[str, Any] = {
+            "name": fts_index, "vec_index": vec_index,
+            "query": query, "vector": vector,
+            "metric": metric, "limit": limit,
+            "fts_weight": fts_weight, "vec_weight": vec_weight,
+        }
+        if num_candidates is not None:
+            p["num_candidates"] = num_candidates
+        if pre_filter is not None:
+            p["pre_filter"] = pre_filter
+        return self._execute("fts", "hybrid_search", p)
+
+    def fts_add_alias(self, alias: str, index: str):
+        """添加索引别名。"""
+        self._execute("fts", "add_alias", {
+            "alias": alias, "index": index,
+        })
+
+    def fts_remove_alias(self, alias: str):
+        """移除索引别名。"""
+        self._execute("fts", "remove_alias", {"alias": alias})
+
+    def fts_reindex(self, name: str) -> int:
+        """重建索引，返回重建数量。"""
+        data = self._execute("fts", "reindex", {"name": name})
+        return data.get("reindexed", 0)
+
+    def fts_close_index(self, name: str):
+        """关闭索引（释放内存）。"""
+        self._execute("fts", "close_index", {"name": name})
+
+    def fts_open_index(self, name: str):
+        """打开索引。"""
+        self._execute("fts", "open_index", {"name": name})
+
+    def fts_get_mapping(self, name: str) -> Any:
+        """获取索引映射信息。"""
+        return self._execute("fts", "get_mapping", {"name": name})
+
+    def fts_list_indexes(self) -> Any:
+        """列出所有索引。"""
+        return self._execute("fts", "list_indexes")
+
+    # ── Geo (地理空间) ──
+
+    def geo_create(self, name: str):
+        """创建地理空间索引。"""
+        self._execute("geo", "create", {"name": name})
+
+    def geo_add(self, name: str, key: str,
+                lng: float, lat: float):
+        """添加地理位置。"""
+        self._execute("geo", "add", {
+            "name": name, "key": key, "lng": lng, "lat": lat,
+        })
+
+    def geo_add_batch(self, name: str,
+                      members: List[Dict]) -> int:
+        """批量添加。members: [{"key":"..","lng":..,"lat":..}, ...]"""
+        data = self._execute("geo", "add_batch", {
+            "name": name, "members": members,
+        })
+        return data.get("count", 0)
+
+    def geo_pos(self, name: str, key: str) -> Optional[Dict]:
+        """查询成员位置。返回 {"lng":..,"lat":..} 或 None。"""
+        data = self._execute("geo", "pos", {
+            "name": name, "key": key,
+        })
+        if not data or data == "null":
+            return None
+        return data
+
+    def geo_del(self, name: str, key: str) -> bool:
+        """删除成员。"""
+        data = self._execute("geo", "del", {
+            "name": name, "key": key,
+        })
+        return data.get("deleted", False)
+
+    def geo_dist(self, name: str, key1: str, key2: str,
+                 unit: str = "m") -> Optional[float]:
+        """计算两点距离。unit: m/km/mi。"""
+        data = self._execute("geo", "dist", {
+            "name": name, "key1": key1, "key2": key2, "unit": unit,
+        })
+        if not data or data == "null":
+            return None
+        return data.get("dist")
+
+    def geo_search(self, name: str, lng: float, lat: float,
+                   radius: float, unit: str = "m",
+                   count: Optional[int] = None) -> Any:
+        """半径搜索。"""
+        p: Dict[str, Any] = {
+            "name": name, "lng": lng, "lat": lat,
+            "radius": radius, "unit": unit,
+        }
+        if count is not None:
+            p["count"] = count
+        return self._execute("geo", "search", p)
+
+    def geo_search_box(self, name: str,
+                       min_lng: float, min_lat: float,
+                       max_lng: float, max_lat: float,
+                       count: Optional[int] = None) -> Any:
+        """矩形范围搜索。"""
+        p: Dict[str, Any] = {
+            "name": name, "min_lng": min_lng, "min_lat": min_lat,
+            "max_lng": max_lng, "max_lat": max_lat,
+        }
+        if count is not None:
+            p["count"] = count
+        return self._execute("geo", "search_box", p)
+
+    def geo_fence(self, name: str, key: str,
+                  center_lng: float, center_lat: float,
+                  radius: float, unit: str = "m") -> Optional[bool]:
+        """地理围栏判定。返回是否在区域内，None 表示成员不存在。"""
+        data = self._execute("geo", "fence", {
+            "name": name, "key": key,
+            "center_lng": center_lng, "center_lat": center_lat,
+            "radius": radius, "unit": unit,
+        })
+        if not data or data == "null":
+            return None
+        return data.get("inside")
+
+    def geo_members(self, name: str) -> List[str]:
+        """列出索引中所有成员 key。"""
+        data = self._execute("geo", "members", {"name": name})
+        return data.get("members", [])
+
+    # ── Graph (图引擎) ──
+
+    def graph_create(self, graph: str):
+        """创建图。"""
+        self._execute("graph", "create", {"graph": graph})
+
+    def graph_add_vertex(self, graph: str, label: str,
+                         properties: Optional[Dict[str, str]] = None) -> int:
+        """添加顶点，返回 vertex_id。"""
+        p: Dict[str, Any] = {"graph": graph, "label": label}
+        if properties:
+            p["properties"] = properties
+        data = self._execute("graph", "add_vertex", p)
+        return data.get("vertex_id", 0)
+
+    def graph_get_vertex(self, graph: str, id: int) -> Any:
+        """获取顶点信息。"""
+        return self._execute("graph", "get_vertex", {
+            "graph": graph, "id": id,
+        })
+
+    def graph_update_vertex(self, graph: str, id: int,
+                            properties: Dict[str, str]):
+        """更新顶点属性。"""
+        self._execute("graph", "update_vertex", {
+            "graph": graph, "id": id, "properties": properties,
+        })
+
+    def graph_delete_vertex(self, graph: str, id: int):
+        """删除顶点。"""
+        self._execute("graph", "delete_vertex", {
+            "graph": graph, "id": id,
+        })
+
+    def graph_add_edge(self, graph: str, from_id: int, to_id: int,
+                       label: str,
+                       properties: Optional[Dict[str, str]] = None) -> int:
+        """添加边，返回 edge_id。"""
+        p: Dict[str, Any] = {
+            "graph": graph, "from": from_id, "to": to_id, "label": label,
+        }
+        if properties:
+            p["properties"] = properties
+        data = self._execute("graph", "add_edge", p)
+        return data.get("edge_id", 0)
+
+    def graph_get_edge(self, graph: str, id: int) -> Any:
+        """获取边信息。"""
+        return self._execute("graph", "get_edge", {
+            "graph": graph, "id": id,
+        })
+
+    def graph_delete_edge(self, graph: str, id: int):
+        """删除边。"""
+        self._execute("graph", "delete_edge", {
+            "graph": graph, "id": id,
+        })
+
+    def graph_neighbors(self, graph: str, id: int,
+                        direction: str = "out") -> List[int]:
+        """获取邻居顶点 ID 列表。direction: out/in/both。"""
+        data = self._execute("graph", "neighbors", {
+            "graph": graph, "id": id, "direction": direction,
+        })
+        return data.get("neighbors", [])
+
+    def graph_out_edges(self, graph: str, id: int) -> Any:
+        """获取顶点的出边。"""
+        return self._execute("graph", "out_edges", {
+            "graph": graph, "id": id,
+        })
+
+    def graph_in_edges(self, graph: str, id: int) -> Any:
+        """获取顶点的入边。"""
+        return self._execute("graph", "in_edges", {
+            "graph": graph, "id": id,
+        })
+
+    def graph_vertices_by_label(self, graph: str,
+                                label: str) -> Any:
+        """按标签查找顶点。"""
+        return self._execute("graph", "vertices_by_label", {
+            "graph": graph, "label": label,
+        })
+
+    def graph_vertex_count(self, graph: str) -> int:
+        """获取顶点总数。"""
+        data = self._execute("graph", "vertex_count", {
+            "graph": graph,
+        })
+        return data.get("count", 0)
+
+    def graph_edge_count(self, graph: str) -> int:
+        """获取边总数。"""
+        data = self._execute("graph", "edge_count", {
+            "graph": graph,
+        })
+        return data.get("count", 0)
+
+    def graph_bfs(self, graph: str, start: int,
+                  max_depth: int = 3,
+                  direction: str = "out") -> Any:
+        """广度优先遍历。"""
+        return self._execute("graph", "bfs", {
+            "graph": graph, "start": start,
+            "max_depth": max_depth, "direction": direction,
+        })
+
+    def graph_shortest_path(self, graph: str,
+                            from_id: int, to_id: int,
+                            max_depth: int = 10) -> Any:
+        """最短路径。"""
+        return self._execute("graph", "shortest_path", {
+            "graph": graph, "from": from_id,
+            "to": to_id, "max_depth": max_depth,
+        })
+
+    def graph_weighted_shortest_path(self, graph: str,
+                                     from_id: int, to_id: int,
+                                     max_depth: int = 10,
+                                     weight_key: str = "weight") -> Any:
+        """加权最短路径。"""
+        return self._execute("graph", "weighted_shortest_path", {
+            "graph": graph, "from": from_id,
+            "to": to_id, "max_depth": max_depth,
+            "weight_key": weight_key,
+        })
+
+    def graph_degree_centrality(self, graph: str,
+                                limit: int = 10) -> Any:
+        """度中心性排行。"""
+        return self._execute("graph", "degree_centrality", {
+            "graph": graph, "limit": limit,
+        })
+
+    def graph_pagerank(self, graph: str,
+                       damping: float = 0.85,
+                       iterations: int = 20,
+                       limit: int = 10) -> Any:
+        """PageRank 算法。"""
+        return self._execute("graph", "pagerank", {
+            "graph": graph, "damping": damping,
+            "iterations": iterations, "limit": limit,
+        })

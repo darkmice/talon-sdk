@@ -134,6 +134,28 @@ namespace TalonDb
         public long? KvTtl(string key) =>
             Execute("kv", "ttl", new() { ["key"] = key })["ttl"]?.GetValue<long>();
 
+        public long KvIncrBy(string key, long delta) =>
+            Execute("kv", "incrby", new() { ["key"] = key, ["delta"] = delta })["value"]?.GetValue<long>() ?? 0;
+
+        public long KvDecrBy(string key, long delta) =>
+            Execute("kv", "decrby", new() { ["key"] = key, ["delta"] = delta })["value"]?.GetValue<long>() ?? 0;
+
+        public bool KvSetNx(string key, string value, long? ttl = null)
+        {
+            var p = new Dictionary<string, object> { ["key"] = key, ["value"] = value };
+            if (ttl.HasValue) p["ttl"] = ttl.Value;
+            return Execute("kv", "setnx", p)["set"]?.GetValue<bool>() ?? false;
+        }
+
+        public JsonNode KvKeysLimit(string prefix = "", long offset = 0, long limit = 100) =>
+            Execute("kv", "keys_limit", new() { ["prefix"] = prefix, ["offset"] = offset, ["limit"] = limit });
+
+        public JsonNode KvScanLimit(string prefix = "", long offset = 0, long limit = 100) =>
+            Execute("kv", "scan_limit", new() { ["prefix"] = prefix, ["offset"] = offset, ["limit"] = limit });
+
+        public long KvCount() =>
+            Execute("kv", "count")["count"]?.GetValue<long>() ?? 0;
+
         // ── TS ──
         public void TsCreate(string name, string[]? tags = null, string[]? fields = null) =>
             Execute("ts", "create", new()
@@ -383,5 +405,235 @@ namespace TalonDb
 
         public long ImportDb(string dir) =>
             Execute("backup", "import", new() { ["dir"] = dir })["imported"]?.GetValue<long>() ?? 0;
+
+        // ── FTS ──
+
+        public void FtsCreateIndex(string name) =>
+            Execute("fts", "create_index", new() { ["name"] = name });
+
+        public void FtsDropIndex(string name) =>
+            Execute("fts", "drop_index", new() { ["name"] = name });
+
+        public void FtsIndex(string name, string docId, Dictionary<string, string> fields) =>
+            Execute("fts", "index", new() { ["name"] = name, ["doc_id"] = docId, ["fields"] = fields });
+
+        public int FtsIndexBatch(string name, Dictionary<string, object>[] docs) =>
+            Execute("fts", "index_batch", new() { ["name"] = name, ["docs"] = docs })
+                ["count"]?.GetValue<int>() ?? 0;
+
+        public bool FtsDelete(string name, string docId) =>
+            Execute("fts", "delete", new() { ["name"] = name, ["doc_id"] = docId })
+                ["deleted"]?.GetValue<bool>() ?? false;
+
+        public JsonNode FtsGet(string name, string docId) =>
+            Execute("fts", "get", new() { ["name"] = name, ["doc_id"] = docId });
+
+        public JsonNode FtsSearch(string name, string query, int limit = 10) =>
+            Execute("fts", "search", new() { ["name"] = name, ["query"] = query, ["limit"] = limit });
+
+        public JsonNode FtsSearchFuzzy(string name, string query, int maxDist = 1, int limit = 10) =>
+            Execute("fts", "search_fuzzy", new()
+            {
+                ["name"] = name, ["query"] = query,
+                ["max_dist"] = maxDist, ["limit"] = limit
+            });
+
+        public JsonNode FtsHybridSearch(string ftsIdx, string vecIdx,
+            string query, float[] vector, Dictionary<string, object>? opts = null)
+        {
+            var p = new Dictionary<string, object>
+            {
+                ["name"] = ftsIdx, ["vec_index"] = vecIdx,
+                ["query"] = query, ["vector"] = vector
+            };
+            if (opts != null) foreach (var kv in opts) p[kv.Key] = kv.Value;
+            return Execute("fts", "hybrid_search", p);
+        }
+
+        public void FtsAddAlias(string alias, string index) =>
+            Execute("fts", "add_alias", new() { ["alias"] = alias, ["index"] = index });
+
+        public void FtsRemoveAlias(string alias) =>
+            Execute("fts", "remove_alias", new() { ["alias"] = alias });
+
+        public long FtsReindex(string name) =>
+            Execute("fts", "reindex", new() { ["name"] = name })["reindexed"]?.GetValue<long>() ?? 0;
+
+        public void FtsCloseIndex(string name) =>
+            Execute("fts", "close_index", new() { ["name"] = name });
+
+        public void FtsOpenIndex(string name) =>
+            Execute("fts", "open_index", new() { ["name"] = name });
+
+        public JsonNode FtsGetMapping(string name) =>
+            Execute("fts", "get_mapping", new() { ["name"] = name });
+
+        public JsonNode FtsListIndexes() => Execute("fts", "list_indexes");
+
+        // ── Geo ──
+
+        public void GeoCreate(string name) =>
+            Execute("geo", "create", new() { ["name"] = name });
+
+        public void GeoAdd(string name, string key, double lng, double lat) =>
+            Execute("geo", "add", new() { ["name"] = name, ["key"] = key, ["lng"] = lng, ["lat"] = lat });
+
+        public int GeoAddBatch(string name, Dictionary<string, object>[] members) =>
+            Execute("geo", "add_batch", new() { ["name"] = name, ["members"] = members })
+                ["count"]?.GetValue<int>() ?? 0;
+
+        public JsonNode GeoPos(string name, string key) =>
+            Execute("geo", "pos", new() { ["name"] = name, ["key"] = key });
+
+        public bool GeoDel(string name, string key) =>
+            Execute("geo", "del", new() { ["name"] = name, ["key"] = key })
+                ["deleted"]?.GetValue<bool>() ?? false;
+
+        public JsonNode GeoDist(string name, string key1, string key2, string unit = "m") =>
+            Execute("geo", "dist", new()
+            {
+                ["name"] = name, ["key1"] = key1, ["key2"] = key2, ["unit"] = unit
+            });
+
+        public JsonNode GeoSearch(string name, double lng, double lat,
+            double radius, string unit = "m", int? count = null)
+        {
+            var p = new Dictionary<string, object>
+            {
+                ["name"] = name, ["lng"] = lng, ["lat"] = lat,
+                ["radius"] = radius, ["unit"] = unit
+            };
+            if (count.HasValue) p["count"] = count.Value;
+            return Execute("geo", "search", p);
+        }
+
+        public JsonNode GeoSearchBox(string name, double minLng, double minLat,
+            double maxLng, double maxLat, int? count = null)
+        {
+            var p = new Dictionary<string, object>
+            {
+                ["name"] = name, ["min_lng"] = minLng, ["min_lat"] = minLat,
+                ["max_lng"] = maxLng, ["max_lat"] = maxLat
+            };
+            if (count.HasValue) p["count"] = count.Value;
+            return Execute("geo", "search_box", p);
+        }
+
+        public JsonNode GeoFence(string name, string key, double centerLng,
+            double centerLat, double radius, string unit = "m") =>
+            Execute("geo", "fence", new()
+            {
+                ["name"] = name, ["key"] = key,
+                ["center_lng"] = centerLng, ["center_lat"] = centerLat,
+                ["radius"] = radius, ["unit"] = unit
+            });
+
+        public string[] GeoMembers(string name)
+        {
+            var data = Execute("geo", "members", new() { ["name"] = name });
+            var arr = data["members"]?.AsArray();
+            if (arr == null) return Array.Empty<string>();
+            return arr.Select(v => v?.GetValue<string>() ?? "").ToArray();
+        }
+
+        // ── Graph ──
+
+        public void GraphCreate(string graph) =>
+            Execute("graph", "create", new() { ["graph"] = graph });
+
+        public long GraphAddVertex(string graph, string label,
+            Dictionary<string, string>? properties = null)
+        {
+            var p = new Dictionary<string, object> { ["graph"] = graph, ["label"] = label };
+            if (properties != null) p["properties"] = properties;
+            return Execute("graph", "add_vertex", p)["vertex_id"]?.GetValue<long>() ?? 0;
+        }
+
+        public JsonNode GraphGetVertex(string graph, long id) =>
+            Execute("graph", "get_vertex", new() { ["graph"] = graph, ["id"] = id });
+
+        public void GraphUpdateVertex(string graph, long id,
+            Dictionary<string, string> properties) =>
+            Execute("graph", "update_vertex", new()
+            {
+                ["graph"] = graph, ["id"] = id, ["properties"] = properties
+            });
+
+        public void GraphDeleteVertex(string graph, long id) =>
+            Execute("graph", "delete_vertex", new() { ["graph"] = graph, ["id"] = id });
+
+        public long GraphAddEdge(string graph, long from, long to,
+            string label, Dictionary<string, string>? properties = null)
+        {
+            var p = new Dictionary<string, object>
+            {
+                ["graph"] = graph, ["from"] = from, ["to"] = to, ["label"] = label
+            };
+            if (properties != null) p["properties"] = properties;
+            return Execute("graph", "add_edge", p)["edge_id"]?.GetValue<long>() ?? 0;
+        }
+
+        public JsonNode GraphGetEdge(string graph, long id) =>
+            Execute("graph", "get_edge", new() { ["graph"] = graph, ["id"] = id });
+
+        public void GraphDeleteEdge(string graph, long id) =>
+            Execute("graph", "delete_edge", new() { ["graph"] = graph, ["id"] = id });
+
+        public JsonNode GraphNeighbors(string graph, long id, string direction = "out") =>
+            Execute("graph", "neighbors", new()
+            {
+                ["graph"] = graph, ["id"] = id, ["direction"] = direction
+            });
+
+        public JsonNode GraphOutEdges(string graph, long id) =>
+            Execute("graph", "out_edges", new() { ["graph"] = graph, ["id"] = id });
+
+        public JsonNode GraphInEdges(string graph, long id) =>
+            Execute("graph", "in_edges", new() { ["graph"] = graph, ["id"] = id });
+
+        public JsonNode GraphVerticesByLabel(string graph, string label) =>
+            Execute("graph", "vertices_by_label", new() { ["graph"] = graph, ["label"] = label });
+
+        public long GraphVertexCount(string graph) =>
+            Execute("graph", "vertex_count", new() { ["graph"] = graph })
+                ["count"]?.GetValue<long>() ?? 0;
+
+        public long GraphEdgeCount(string graph) =>
+            Execute("graph", "edge_count", new() { ["graph"] = graph })
+                ["count"]?.GetValue<long>() ?? 0;
+
+        public JsonNode GraphBfs(string graph, long start, int maxDepth = 3,
+            string direction = "out") =>
+            Execute("graph", "bfs", new()
+            {
+                ["graph"] = graph, ["start"] = start,
+                ["max_depth"] = maxDepth, ["direction"] = direction
+            });
+
+        public JsonNode GraphShortestPath(string graph, long from, long to,
+            int maxDepth = 10) =>
+            Execute("graph", "shortest_path", new()
+            {
+                ["graph"] = graph, ["from"] = from, ["to"] = to, ["max_depth"] = maxDepth
+            });
+
+        public JsonNode GraphWeightedShortestPath(string graph, long from, long to,
+            int maxDepth = 10, string weightKey = "weight") =>
+            Execute("graph", "weighted_shortest_path", new()
+            {
+                ["graph"] = graph, ["from"] = from, ["to"] = to,
+                ["max_depth"] = maxDepth, ["weight_key"] = weightKey
+            });
+
+        public JsonNode GraphDegreeCentrality(string graph, int limit = 10) =>
+            Execute("graph", "degree_centrality", new() { ["graph"] = graph, ["limit"] = limit });
+
+        public JsonNode GraphPagerank(string graph, double damping = 0.85,
+            int iterations = 20, int limit = 10) =>
+            Execute("graph", "pagerank", new()
+            {
+                ["graph"] = graph, ["damping"] = damping,
+                ["iterations"] = iterations, ["limit"] = limit
+            });
     }
 }
