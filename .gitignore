@@ -1,0 +1,5 @@
+# Pre-built native libraries (downloaded by Makefile)
+lib/*.a
+lib/*.dylib
+lib/*.so
+lib/*.dll
