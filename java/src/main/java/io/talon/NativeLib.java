@@ -76,12 +76,17 @@ interface NativeLib extends Library {
             if (tmpLib.exists() && tmpLib.length() > 0) {
                 return tmpLib.getAbsolutePath();
             }
-            try (FileOutputStream out = new FileOutputStream(tmpLib)) {
+            // Write to temp file first, then atomic rename to avoid partial reads
+            File tmpFile = File.createTempFile("talon-", ".tmp", tmpDir);
+            try (FileOutputStream out = new FileOutputStream(tmpFile)) {
                 byte[] buf = new byte[65536];
                 int n;
                 while ((n = in.read(buf)) > 0) out.write(buf, 0, n);
             }
-            tmpLib.deleteOnExit();
+            if (!tmpFile.renameTo(tmpLib)) {
+                // Another process may have written it; that's fine
+                tmpFile.delete();
+            }
             return tmpLib.getAbsolutePath();
         } catch (IOException e) {
             return null;

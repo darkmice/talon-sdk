@@ -14,7 +14,7 @@ const os = require('os');
 const { execSync } = require('child_process');
 
 const REPO = 'darkmice/talon-bin';
-const VERSION = '0.1.3';
+const VERSION = require('../package.json').version;
 
 function platformInfo() {
   const plat = os.platform();
@@ -39,13 +39,13 @@ function platformInfo() {
   return { libName, releaseName };
 }
 
-function download(url, dest) {
+function download(url, dest, redirects = 0) {
+  const MAX_REDIRECTS = 5;
   return new Promise((resolve, reject) => {
     const proxy = process.env.https_proxy || process.env.HTTPS_PROXY ||
                   process.env.http_proxy || process.env.HTTP_PROXY;
 
     if (proxy) {
-      // Use curl for proxy support (simpler than implementing CONNECT)
       try {
         execSync(`curl -fSL --retry 3 -o "${dest}" "${url}"`, {
           stdio: 'inherit',
@@ -59,9 +59,11 @@ function download(url, dest) {
 
     const get = url.startsWith('https:') ? https.get : http.get;
     get(url, { headers: { 'User-Agent': 'talon-nodejs-sdk' } }, (res) => {
-      // Follow redirects
       if (res.statusCode >= 300 && res.statusCode < 400 && res.headers.location) {
-        return download(res.headers.location, dest).then(resolve).catch(reject);
+        if (redirects >= MAX_REDIRECTS) {
+          return reject(new Error(`Too many redirects (>${MAX_REDIRECTS})`));
+        }
+        return download(res.headers.location, dest, redirects + 1).then(resolve).catch(reject);
       }
       if (res.statusCode !== 200) {
         return reject(new Error(`HTTP ${res.statusCode}: ${url}`));

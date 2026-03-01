@@ -1,6 +1,5 @@
 """Native library auto-download and discovery for Talon Python SDK."""
 
-import hashlib
 import os
 import platform
 import sys
@@ -10,7 +9,10 @@ import urllib.request
 
 # GitHub Release base URL
 _REPO = "darkmice/talon-bin"
-_VERSION = "0.1.3"
+
+def _get_version():
+    from . import __version__
+    return __version__
 
 
 def _platform_info():
@@ -54,19 +56,20 @@ def _cache_dir():
         else:
             xdg = os.environ.get("XDG_CACHE_HOME", os.path.join(os.path.expanduser("~"), ".cache"))
             base = os.path.join(xdg, "talon")
-    return os.path.join(base, _VERSION)
+    return os.path.join(base, _get_version())
 
 
 def _download_lib(dest_dir):
     """Download the native library from GitHub Releases."""
     lib_name, _, release_name = _platform_info()
     archive_name = f"libtalon-{release_name}.tar.gz"
-    url = f"https://github.com/{_REPO}/releases/download/v{_VERSION}/{archive_name}"
+    version = _get_version()
+    url = f"https://github.com/{_REPO}/releases/download/v{version}/{archive_name}"
 
     os.makedirs(dest_dir, exist_ok=True)
     archive_path = os.path.join(dest_dir, archive_name)
 
-    print(f"[talon] Downloading native library v{_VERSION} for {release_name}...")
+    print(f"[talon] Downloading native library v{version} for {release_name}...")
     try:
         # Support proxy from environment
         proxy = os.environ.get("https_proxy") or os.environ.get("HTTPS_PROXY")
@@ -84,12 +87,23 @@ def _download_lib(dest_dir):
                     break
                 f.write(chunk)
 
+        # Verify download is not empty/truncated
+        if os.path.getsize(archive_path) < 1024:
+            print(f"[talon] Warning: downloaded archive too small, likely corrupted", file=sys.stderr)
+            os.remove(archive_path)
+            return None
+
         with tarfile.open(archive_path, "r:gz") as tar:
-            tar.extractall(dest_dir)
+            # Filter to prevent path traversal (CVE-2007-4559)
+            safe_members = [
+                m for m in tar.getmembers()
+                if not m.name.startswith("/") and ".." not in m.name
+            ]
+            tar.extractall(dest_dir, members=safe_members)
 
         os.remove(archive_path)
         lib_path = os.path.join(dest_dir, lib_name)
-        if os.path.isfile(lib_path):
+        if os.path.isfile(lib_path) and os.path.getsize(lib_path) > 0:
             print(f"[talon] Native library ready: {lib_path}")
             return lib_path
         else:
