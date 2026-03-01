@@ -1,0 +1,97 @@
+name: Update Pre-built Libraries
+
+on:
+  workflow_dispatch:
+    inputs:
+      talon_version:
+        description: 'Talon version to build (e.g. 0.1.3)'
+        required: true
+        default: '0.1.3'
+
+jobs:
+  build:
+    strategy:
+      matrix:
+        include:
+          - os: macos-14
+            target: aarch64-apple-darwin
+            lib_dir: darwin_arm64
+          - os: macos-13
+            target: x86_64-apple-darwin
+            lib_dir: darwin_amd64
+          - os: ubuntu-22.04
+            target: x86_64-unknown-linux-gnu
+            lib_dir: linux_amd64
+          - os: ubuntu-22.04-arm
+            target: aarch64-unknown-linux-gnu
+            lib_dir: linux_arm64
+
+    runs-on: ${{ matrix.os }}
+
+    steps:
+      - name: Checkout talon-sdk
+        uses: actions/checkout@v4
+
+      - name: Download libtalon from talon-bin releases
+        run: |
+          VERSION="${{ github.event.inputs.talon_version }}"
+          case "${{ matrix.lib_dir }}" in
+            darwin_arm64) ARCHIVE="libtalon-talon-macos-arm64.tar.gz" ;;
+            darwin_amd64) ARCHIVE="libtalon-talon-macos-amd64.tar.gz" ;;
+            linux_amd64)  ARCHIVE="libtalon-talon-linux-amd64.tar.gz" ;;
+            linux_arm64)  ARCHIVE="libtalon-talon-linux-arm64.tar.gz" ;;
+          esac
+          URL="https://github.com/darkmice/talon-bin/releases/download/v${VERSION}/${ARCHIVE}"
+          echo "Downloading ${URL}"
+          mkdir -p lib/${{ matrix.lib_dir }}
+          curl -fSL --retry 3 "${URL}" -o /tmp/libtalon.tar.gz
+          tar -xzf /tmp/libtalon.tar.gz -C lib/${{ matrix.lib_dir }}/
+          ls -lh lib/${{ matrix.lib_dir }}/
+
+      - name: Upload lib artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: lib-${{ matrix.lib_dir }}
+          path: lib/${{ matrix.lib_dir }}/libtalon.a
+
+  commit:
+    needs: build
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+
+    steps:
+      - name: Checkout talon-sdk
+        uses: actions/checkout@v4
+
+      - name: Download all lib artifacts
+        uses: actions/download-artifact@v4
+        with:
+          path: artifacts
+
+      - name: Place libraries
+        run: |
+          for platform in darwin_arm64 darwin_amd64 linux_amd64 linux_arm64; do
+            mkdir -p lib/${platform}
+            cp artifacts/lib-${platform}/libtalon.a lib/${platform}/libtalon.a
+            echo "✓ lib/${platform}/libtalon.a ($(du -h lib/${platform}/libtalon.a | cut -f1))"
+          done
+
+      - name: Commit and push
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "github-actions[bot]@users.noreply.github.com"
+          git add lib/
+          if git diff --cached --quiet; then
+            echo "No changes to commit"
+          else
+            VERSION="${{ github.event.inputs.talon_version }}"
+            git commit -m "chore: update pre-built libraries to v${VERSION}"
+            git push
+          fi
+
+      - name: Create tag
+        run: |
+          VERSION="${{ github.event.inputs.talon_version }}"
+          git tag "v${VERSION}" || true
+          git push origin "v${VERSION}" || true

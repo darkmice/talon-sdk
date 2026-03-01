@@ -1,5 +1,5 @@
-# Pre-built native libraries (downloaded by Makefile)
-lib/*.a
-lib/*.dylib
-lib/*.so
-lib/*.dll
+# Build artifacts
+*.dylib
+*.so
+*.dll
+*.tar.gz

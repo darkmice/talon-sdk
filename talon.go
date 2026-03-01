@@ -1,14 +1,10 @@
 // Package talon 提供 Talon 数据库的 Go SDK。
 //
 // 通过 cgo 封装 talon_execute C ABI，零额外依赖。
-//
-// 安装前请先运行 make setup 下载预编译库。
+// 预编译库已内嵌，go get 后直接可用。
 package talon
 
 /*
-#cgo LDFLAGS: -L${SRCDIR}/lib -ltalon
-#cgo darwin LDFLAGS: -framework Security -framework CoreFoundation -liconv
-#cgo linux LDFLAGS: -lm -ldl -lpthread
 #include <stdlib.h>
 #include "include/talon.h"
 */

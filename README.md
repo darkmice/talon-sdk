@@ -6,37 +6,13 @@
 
 ## 安装
 
-### 1. 下载预编译库
+预编译库已内嵌在仓库中，`go get` 后直接可用，无需额外步骤。
 
 ```bash
-# 克隆 SDK
-git clone https://github.com/darkmice/talon-sdk.git
-cd talon-sdk
-
-# 下载对应平台的 libtalon.a（自动检测 macOS/Linux, amd64/arm64）
-make setup VERSION=0.1.3
+go get github.com/darkmice/talon-sdk@v0.1.3
 ```
 
-预编译库从 [talon-bin Releases](https://github.com/darkmice/talon-bin/releases) 下载。
-
-### 2. 添加依赖
-
-```bash
-go get github.com/darkmice/talon-sdk
-```
-
-### 3. 设置库路径（如果使用 go get）
-
-如果通过 `go get` 添加依赖，需确保 `libtalon.a` 在 SDK 包的 `lib/` 目录下：
-
-```bash
-# 找到 Go 模块缓存中的 SDK 路径
-SDK_PATH=$(go env GOMODCACHE)/github.com/darkmice/talon-sdk@v0.1.3
-mkdir -p $SDK_PATH/lib
-make -C $SDK_PATH setup VERSION=0.1.3
-```
-
-或者使用 `go mod vendor` + replace 指令指向本地克隆。
+> 支持 macOS (arm64/amd64) 和 Linux (amd64/arm64)。
 
 ## 模块覆盖
 
