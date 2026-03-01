@@ -45,7 +45,11 @@ interface NativeLib extends Library {
             platDir = "windows_amd64";
             libName = "talon.dll";
         } else {
-            String a = arch.contains("aarch64") || arch.contains("arm64") ? "arm64" : "amd64";
+            String a;
+            if (arch.contains("aarch64") || arch.contains("arm64")) a = "arm64";
+            else if (arch.contains("loongarch64")) a = "loongarch64";
+            else if (arch.contains("riscv64")) a = "riscv64";
+            else a = "amd64";
             platDir = "linux_" + a;
             libName = "libtalon.so";
         }

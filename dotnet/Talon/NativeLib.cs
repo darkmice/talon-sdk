@@ -36,7 +36,15 @@ namespace TalonDb
             }
             else
             {
-                var arch = RuntimeInformation.OSArchitecture == Architecture.Arm64 ? "arm64" : "amd64";
+                string arch;
+                if (RuntimeInformation.OSArchitecture == Architecture.Arm64)
+                    arch = "arm64";
+                else if (RuntimeInformation.OSArchitecture.ToString() == "LoongArch64")
+                    arch = "loongarch64";
+                else if (RuntimeInformation.OSArchitecture.ToString() == "RiscV64")
+                    arch = "riscv64";
+                else
+                    arch = "amd64";
                 platDir = $"linux_{arch}";
                 libName = "libtalon.so";
             }

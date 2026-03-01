@@ -83,7 +83,14 @@ def _find_lib() -> str:
         plat_dir = "windows_amd64"
     else:
         name = "libtalon.so"
-        arch = "arm64" if machine == "aarch64" else "amd64"
+        if machine == "aarch64":
+            arch = "arm64"
+        elif machine == "loongarch64":
+            arch = "loongarch64"
+        elif machine == "riscv64":
+            arch = "riscv64"
+        else:
+            arch = "amd64"
         plat_dir = f"linux_{arch}"
 
     # 1. 环境变量

@@ -314,10 +314,24 @@ var history = db.AiGetHistory("s1");
 | macOS | arm64 | `lib/darwin_arm64/` | `libtalon.a` | `libtalon.dylib` |
 | macOS | amd64 | `lib/darwin_amd64/` | `libtalon.a` | `libtalon.dylib` |
 | Linux | amd64 | `lib/linux_amd64/` | `libtalon.a` | `libtalon.so` |
-| Linux | arm64 | `lib/linux_arm64/` | `libtalon.a` | `libtalon.so` |
+| Linux | arm64 (鲲鹏/飞腾) | `lib/linux_arm64/` | `libtalon.a` | `libtalon.so` |
+| Windows | amd64 | `lib/windows_amd64/` | `talon.lib` | `talon.dll` |
+| Linux | loongarch64 (龙芯) | `lib/linux_loongarch64/` | `libtalon.a` | `libtalon.so` |
+| Linux | riscv64 | `lib/linux_riscv64/` | `libtalon.a` | `libtalon.so` |
 
-- **Go** 使用静态库（`.a`），编译后无运行时依赖
-- **Python / Node.js / Java / .NET** 使用动态库（`.dylib` / `.so`），运行时自动加载
+- **Go** 使用静态库（`.a` / `.lib`），编译后无运行时依赖
+- **Python / Node.js / Java / .NET** 使用动态库（`.dylib` / `.so` / `.dll`），运行时自动加载
+
+### 信创平台支持
+
+| 芯片 | 架构 | 状态 |
+|------|------|------|
+| 鲲鹏 (Kunpeng) | arm64 | ✅ `linux_arm64` |
+| 飞腾 (Phytium) | arm64 | ✅ `linux_arm64` |
+| 海光 (Hygon) | x86_64 | ✅ `linux_amd64` |
+| 兆芯 (Zhaoxin) | x86_64 | ✅ `linux_amd64` |
+| 龙芯 (Loongson) | loongarch64 | ✅ `linux_loongarch64` |
+| RISC-V | riscv64 | ✅ `linux_riscv64` |
 
 ### 库查找优先级
 

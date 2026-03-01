@@ -31,7 +31,11 @@ function findLib(libPath) {
     : plat === 'win32' ? 'talon.dll' : 'libtalon.so';
 
   // 平台目录名
-  const platArch = arch === 'arm64' ? 'arm64' : 'amd64';
+  let platArch;
+  if (arch === 'arm64') platArch = 'arm64';
+  else if (arch === 'loong64') platArch = 'loongarch64';
+  else if (arch === 'riscv64') platArch = 'riscv64';
+  else platArch = 'amd64';
   const platDir = plat === 'darwin' ? `darwin_${platArch}`
     : plat === 'win32' ? `windows_${platArch}` : `linux_${platArch}`;
 
