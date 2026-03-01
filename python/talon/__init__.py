@@ -21,4 +21,4 @@ Talon — 面向本地 AI 的多模融合数据引擎 Python SDK。
 from talon.client import Talon, TalonError
 
 __all__ = ["Talon", "TalonError"]
-__version__ = "0.1.3"
+__version__ = "0.1.4"
