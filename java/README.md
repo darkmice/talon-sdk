@@ -4,16 +4,15 @@
 
 ## 安装
 
-Maven:
-```xml
-<dependency>
-  <groupId>io.talon</groupId>
-  <artifactId>talon-java</artifactId>
-  <version>0.1.3</version>
-</dependency>
+Java SDK 暂未发布到 Maven Central，需从源码构建：
+
+```bash
+git clone https://github.com/darkmice/talon-sdk.git
+cd talon-sdk/java
+mvn install
 ```
 
-Native library 内嵌于 JAR 中，运行时自动提取，无需手动编译。
+> **注意**：构建前需确保 `lib/` 目录包含对应平台的 native library（由 CI 自动推送，或从 [GitHub Releases](https://github.com/darkmice/talon-bin/releases) 手动下载）。
 
 ## 用法
 

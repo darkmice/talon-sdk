@@ -11,7 +11,7 @@
 | **Go** | [`go/`](go/) | `go get github.com/darkmice/talon-sdk/go` | 10 模块 100% |
 | **Python** | [`python/`](python/) | `pip install talon-db` | 10 模块 100% |
 | **Node.js** | [`nodejs/`](nodejs/) | `npm install talon-db` | 10 模块 100% |
-| **Java** | [`java/`](java/) | Maven `io.talon:talon-java` | 10 模块 100% |
+| **Java** | [`java/`](java/) | 源码构建（暂未发布 Maven） | 10 模块 100% |
 | **.NET** | [`dotnet/`](dotnet/) | `dotnet add package TalonDb` | 10 模块 100% |
 
 ## 引擎模块（全部 SDK 覆盖）
@@ -197,15 +197,13 @@ Node.js SDK 通过 `ffi-napi` 加载 native library，`npm install` 时自动从
 
 ## Java
 
-Maven:
-
-```xml
-<dependency>
-  <groupId>io.talon</groupId>
-  <artifactId>talon-java</artifactId>
-  <version>0.1.3</version>
-</dependency>
+```bash
+git clone https://github.com/darkmice/talon-sdk.git
+cd talon-sdk/java
+mvn install
 ```
+
+> Java SDK 暂未发布到 Maven Central，需从源码构建。
 
 ```java
 import io.talon.Talon;
@@ -247,7 +245,7 @@ try (Talon db = new Talon("./data")) {
 }
 ```
 
-Java SDK 通过 JNA 加载 native library，内嵌于 JAR 中，运行时自动提取。
+Java SDK 通过 JNA 加载 native library，需确保 `lib/` 目录包含对应平台的动态库。
 
 ---
 
