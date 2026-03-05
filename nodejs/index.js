@@ -1,18 +1,14 @@
 /**
- * Talon Node.js SDK — 通过 ffi-napi 封装 talon_execute C ABI。
+ * Talon Node.js SDK — 通过 koffi 封装 talon_execute C ABI。
  * @module talon-db
  */
 
 'use strict';
 
-const ffi = require('ffi-napi');
-const ref = require('ref-napi');
+const koffi = require('koffi');
 const path = require('path');
 const fs = require('fs');
 const os = require('os');
-
-const voidPtr = ref.refType(ref.types.void);
-const stringPtr = ref.refType(ref.types.CString);
 
 /**
  * 查找 libtalon 动态库路径。
@@ -86,15 +82,16 @@ class Talon {
    * @param {string} [libPath] - libtalon 动态库路径（可选）
    */
   constructor(dbPath, libPath) {
-    this._lib = ffi.Library(findLib(libPath), {
-      talon_open: [voidPtr, ['string']],
-      talon_close: ['void', [voidPtr]],
-      talon_execute: ['int', [voidPtr, 'string', stringPtr]],
-      talon_free_string: ['void', [voidPtr]],
-      talon_persist: ['int', [voidPtr]],
-    });
-    this._handle = this._lib.talon_open(dbPath);
-    if (this._handle.isNull()) {
+    const lib = koffi.load(findLib(libPath));
+    this._talon_open = lib.func('talon_open', 'void *', ['str']);
+    this._talon_close = lib.func('talon_close', 'void', ['void *']);
+    this._talon_execute = lib.func('talon_execute', 'int', ['void *', 'str', '_Out_ char **']);
+    this._talon_free_string = lib.func('talon_free_string', 'void', ['void *']);
+    this._talon_persist = lib.func('talon_persist', 'int', ['void *']);
+    this._lib = lib;
+
+    this._handle = this._talon_open(dbPath);
+    if (!this._handle) {
       throw new TalonError(`无法打开数据库: ${dbPath}`);
     }
   }
@@ -107,19 +104,19 @@ class Talon {
    * @returns {object} data 字段
    */
   _execute(module, action = '', params = {}) {
-    if (!this._handle || this._handle.isNull()) {
+    if (!this._handle) {
       throw new TalonError('数据库已关闭');
     }
     const cmd = JSON.stringify({ module, action, params });
-    const outBuf = ref.alloc(stringPtr);
-    const rc = this._lib.talon_execute(this._handle, cmd, outBuf);
+    const outBuf = [null];
+    const rc = this._talon_execute(this._handle, cmd, outBuf);
     if (rc !== 0) throw new TalonError('talon_execute 调用失败');
-    const outPtr = outBuf.deref();
+    const outPtr = outBuf[0];
     let result;
     try {
-      result = JSON.parse(outPtr.readCString());
+      result = JSON.parse(koffi.decode(outPtr, 'char', -1));
     } finally {
-      this._lib.talon_free_string(outPtr);
+      this._talon_free_string(outPtr);
     }
     if (!result.ok) throw new TalonError(result.error || '未知错误');
     return result.data || {};
@@ -127,8 +124,8 @@ class Talon {
 
   /** 关闭数据库。 */
   close() {
-    if (this._handle && !this._handle.isNull()) {
-      this._lib.talon_close(this._handle);
+    if (this._handle) {
+      this._talon_close(this._handle);
       this._handle = null;
     }
   }
@@ -136,7 +133,7 @@ class Talon {
   /** 刷盘。 */
   persist() {
     if (!this._handle) throw new TalonError('数据库已关闭');
-    if (this._lib.talon_persist(this._handle) !== 0) {
+    if (this._talon_persist(this._handle) !== 0) {
       throw new TalonError('persist 失败');
     }
   }
