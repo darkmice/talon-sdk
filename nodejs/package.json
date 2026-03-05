@@ -1,6 +1,6 @@
 {
   "name": "talon-db",
-  "version": "0.1.8",
+  "version": "0.1.9",
   "description": "Talon — AI-native multi-model data engine (SQL + KV + Vector + TimeSeries + MQ + FTS + GEO + Graph + AI)",
   "main": "index.js",
   "types": "index.d.ts",

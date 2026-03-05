@@ -3,7 +3,7 @@
     <TargetFramework>net8.0</TargetFramework>
     <RootNamespace>TalonDb</RootNamespace>
     <PackageId>TalonDb</PackageId>
-    <Version>0.1.8</Version>
+    <Version>0.1.9</Version>
     <Description>Talon — AI-native multi-model data engine (SQL + KV + Vector + TimeSeries + MQ + FTS + GEO + Graph + AI)</Description>
     <Nullable>enable</Nullable>
     <Authors>Talon Contributors</Authors>
