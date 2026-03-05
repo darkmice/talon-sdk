@@ -1,23 +1,52 @@
+# ===========================
+# OS
+# ===========================
+.DS_Store
+Thumbs.db
+
+# ===========================
+# IDE / Editor
+# ===========================
+.idea/
+.vscode/
+
+# ===========================
 # Build artifacts
+# ===========================
 *.tar.gz
 
-# Native libraries (each SDK now auto-downloads from GitHub Releases)
+# ===========================
+# Native libraries (auto-downloaded from GitHub Releases)
+# ===========================
 lib/
-
-# Auto-downloaded native libs
 nodejs/native/
 python/talon/native/
 dotnet/Talon/runtimes/
 
+# ===========================
 # Python
+# ===========================
 __pycache__/
 *.pyc
 *.egg-info/
 dist/
 build/
+.venv/
+venv/
 
+# ===========================
 # Java
+# ===========================
 java/target/
 
-# Node
+# ===========================
+# Node.js
+# ===========================
 node_modules/
+
+# ===========================
+# .NET
+# ===========================
+dotnet/*/bin/
+dotnet/*/obj/
+*.nupkg
