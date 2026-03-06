@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2026 Talon Contributors
+ * Author: dark.lijin@gmail.com
+ * Licensed under the Talon Community Dual License Agreement.
+ * See the LICENSE file in the project root for full license information.
+ */
 // Talon Go SDK — 图引擎（Graph）方法。
 
 package talon

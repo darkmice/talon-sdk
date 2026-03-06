@@ -1,3 +1,9 @@
+#
+# Copyright (c) 2026 Talon Contributors
+# Author: dark.lijin@gmail.com
+# Licensed under the Talon Community Dual License Agreement.
+# See the LICENSE file in the project root for full license information.
+#
 [build-system]
 requires = ["setuptools>=64"]
 build-backend = "setuptools.build_meta"
@@ -26,7 +32,7 @@ classifiers = [
 ]
 
 [project.urls]
-Homepage = "https://github.com/darkmice/talon"
+Homepage = "https://github.com/darkmice/talon-core"
 Repository = "https://github.com/darkmice/talon-sdk"
 Documentation = "https://darkmice.github.io/talon-docs/"
 

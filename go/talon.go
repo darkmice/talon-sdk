@@ -1,3 +1,9 @@
+/*
+ * Copyright (c) 2026 Talon Contributors
+ * Author: dark.lijin@gmail.com
+ * Licensed under the Talon Community Dual License Agreement.
+ * See the LICENSE file in the project root for full license information.
+ */
 // Package talon 提供 Talon 数据库的 Go SDK。
 //
 // 通过 cgo 封装 talon_execute C ABI，零额外依赖。

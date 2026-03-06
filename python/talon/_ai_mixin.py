@@ -1,3 +1,9 @@
+#
+# Copyright (c) 2026 Talon Contributors
+# Author: dark.lijin@gmail.com
+# Licensed under the Talon Community Dual License Agreement.
+# See the LICENSE file in the project root for full license information.
+#
 """Talon AI + Backup 方法 Mixin，由 Talon 类继承。"""
 
 from typing import Any, Dict, List, Optional

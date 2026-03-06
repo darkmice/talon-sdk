@@ -8,7 +8,7 @@
     <Nullable>enable</Nullable>
     <Authors>Talon Contributors</Authors>
     <PackageLicenseExpression>MIT</PackageLicenseExpression>
-    <PackageProjectUrl>https://github.com/darkmice/talon</PackageProjectUrl>
+    <PackageProjectUrl>https://github.com/darkmice/talon-core</PackageProjectUrl>
     <RepositoryUrl>https://github.com/darkmice/talon-sdk</RepositoryUrl>
     <PackageTags>database;embedded;ai;vector;timeseries;kv;rag;agent</PackageTags>
     <PackageReadmeFile>README.md</PackageReadmeFile>

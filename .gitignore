@@ -50,3 +50,13 @@ node_modules/
 dotnet/*/bin/
 dotnet/*/obj/
 *.nupkg
+
+# ===========================
+# AI Agents / IDEs
+# ===========================
+.agents
+.cursor
+.ida
+.kiro
+.windsurf
+.docs

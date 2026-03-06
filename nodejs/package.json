@@ -16,10 +16,10 @@
   ],
   "license": "MIT",
   "author": "Talon Contributors",
-  "homepage": "https://github.com/darkmice/talon",
+  "homepage": "https://github.com/darkmice/talon-core",
   "repository": {
     "type": "git",
-    "url": "https://github.com/darkmice/talon-sdk.git",
+    "url": "https://github.com/darkmice/talon-core-sdk.git",
     "directory": "nodejs"
   },
   "scripts": {

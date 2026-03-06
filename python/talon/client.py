@@ -1,3 +1,9 @@
+#
+# Copyright (c) 2026 Talon Contributors
+# Author: dark.lijin@gmail.com
+# Licensed under the Talon Community Dual License Agreement.
+# See the LICENSE file in the project root for full license information.
+#
 """Talon Python SDK — ctypes 封装 talon_execute C ABI。"""
 
 import ctypes
