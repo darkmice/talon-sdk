@@ -351,7 +351,7 @@ public class Talon implements AutoCloseable {
         execute("vector", "set_ef_search", p);
     }
 
-    // ── AI ──
+    // ── AI: Session ──
 
     public void aiCreateSession(String id, Map<String, String> metadata,
                                 Long ttl) {
@@ -366,6 +366,15 @@ public class Talon implements AutoCloseable {
         return execute("ai", "get_session", Map.of("id", id));
     }
 
+    public JsonElement aiCreateSessionIfNotExists(String id,
+        Map<String, String> metadata, Long ttl) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("id", id);
+        if (metadata != null) p.put("metadata", metadata);
+        if (ttl != null) p.put("ttl", ttl);
+        return execute("ai", "create_session_if_not_exists", p);
+    }
+
     public JsonElement aiListSessions() {
         return execute("ai", "list_sessions");
     }
@@ -377,6 +386,41 @@ public class Talon implements AutoCloseable {
     public void aiUpdateSession(String id, Map<String, String> metadata) {
         execute("ai", "update_session", Map.of("id", id, "metadata", metadata));
     }
+
+    public long aiCleanupExpiredSessions() {
+        return execute("ai", "cleanup_expired_sessions")
+            .getAsJsonObject().get("cleaned").getAsLong();
+    }
+
+    public void aiArchiveSession(String id) {
+        execute("ai", "archive_session", Map.of("id", id));
+    }
+
+    public void aiUnarchiveSession(String id) {
+        execute("ai", "unarchive_session", Map.of("id", id));
+    }
+
+    public JsonElement aiExportSession(String id) {
+        return execute("ai", "export_session", Map.of("id", id));
+    }
+
+    public JsonElement aiSessionStats(String id) {
+        return execute("ai", "session_stats", Map.of("id", id));
+    }
+
+    public void aiAddSessionTag(String id, String tag) {
+        execute("ai", "add_session_tag", Map.of("id", id, "tag", tag));
+    }
+
+    public void aiRemoveSessionTag(String id, String tag) {
+        execute("ai", "remove_session_tag", Map.of("id", id, "tag", tag));
+    }
+
+    public JsonElement aiListSessionsByTag(String tag) {
+        return execute("ai", "list_sessions_by_tag", Map.of("tag", tag));
+    }
+
+    // ── AI: Context ──
 
     public long aiClearContext(String sessionId) {
         return execute("ai", "clear_context", Map.of("session_id", sessionId))
@@ -400,10 +444,45 @@ public class Talon implements AutoCloseable {
             Map.of("session_id", sessionId, "max_tokens", maxTokens));
     }
 
+    public JsonElement aiGetContextWindowWithPrompt(String sessionId, int maxTokens) {
+        return execute("ai", "get_context_window_with_prompt",
+            Map.of("session_id", sessionId, "max_tokens", maxTokens));
+    }
+
     public JsonElement aiGetRecentMessages(String sessionId, int n) {
         return execute("ai", "get_recent_messages",
             Map.of("session_id", sessionId, "n", n));
     }
+
+    public void aiSetSystemPrompt(String sessionId, String prompt, int tokenCount) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("session_id", sessionId);
+        p.put("prompt", prompt);
+        p.put("token_count", tokenCount);
+        execute("ai", "set_system_prompt", p);
+    }
+
+    public void aiSetContextSummary(String sessionId, String summary, int tokenCount) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("session_id", sessionId);
+        p.put("summary", summary);
+        p.put("token_count", tokenCount);
+        execute("ai", "set_context_summary", p);
+    }
+
+    public JsonElement aiGetContextSummary(String sessionId) {
+        return execute("ai", "get_context_summary",
+            Map.of("session_id", sessionId));
+    }
+
+    public JsonElement aiAutoSummarize(String sessionId, Integer maxTokens) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("session_id", sessionId);
+        if (maxTokens != null) p.put("max_tokens", maxTokens);
+        return execute("ai", "auto_summarize", p);
+    }
+
+    // ── AI: Memory ──
 
     public void aiStoreMemory(Map<String, Object> entry, float[] embedding) {
         Map<String, Object> p = new HashMap<>();
@@ -441,6 +520,114 @@ public class Talon implements AutoCloseable {
             Map.of("entries", entries, "embeddings", embeddings));
     }
 
+    public JsonElement aiDeduplicateMemories(double threshold) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("threshold", threshold);
+        return execute("ai", "deduplicate_memories", p);
+    }
+
+    public long aiCleanupExpiredMemories() {
+        return execute("ai", "cleanup_expired_memories")
+            .getAsJsonObject().get("cleaned").getAsLong();
+    }
+
+    public JsonElement aiMemoryStats() {
+        return execute("ai", "memory_stats");
+    }
+
+    // ── AI: RAG ──
+
+    public void aiRagIngestDocument(Map<String, Object> document,
+        List<Map<String, Object>> chunks, List<float[]> embeddings) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("document", document);
+        p.put("chunks", chunks);
+        p.put("embeddings", embeddings);
+        execute("ai", "rag_ingest_document", p);
+    }
+
+    public void aiRagIngestBatch(List<Map<String, Object>> documents) {
+        execute("ai", "rag_ingest_batch", Map.of("documents", documents));
+    }
+
+    public JsonElement aiRagSearch(float[] queryEmbedding, int k,
+                                   Map<String, Object> filter) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("query_embedding", queryEmbedding); p.put("k", k);
+        if (filter != null) p.put("filter", filter);
+        return execute("ai", "rag_search", p);
+    }
+
+    public JsonElement aiRagGetDocument(String docId) {
+        return execute("ai", "rag_get_document", Map.of("doc_id", docId));
+    }
+
+    public JsonElement aiRagListDocuments() {
+        return execute("ai", "rag_list_documents");
+    }
+
+    public void aiRagDeleteDocument(String docId) {
+        execute("ai", "rag_delete_document", Map.of("doc_id", docId));
+    }
+
+    public void aiRagUpdateDocument(String docId,
+        List<Map<String, Object>> chunks, List<float[]> embeddings) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("doc_id", docId);
+        p.put("chunks", chunks);
+        p.put("embeddings", embeddings);
+        execute("ai", "rag_update_document", p);
+    }
+
+    public JsonElement aiRagDocumentVersions(String docId) {
+        return execute("ai", "rag_document_versions", Map.of("doc_id", docId));
+    }
+
+    // ── AI: Agent ──
+
+    public void aiAgentLogStep(String sessionId, Map<String, Object> step) {
+        execute("ai", "agent_log_step",
+            Map.of("session_id", sessionId, "step", step));
+    }
+
+    public JsonElement aiAgentGetSteps(String sessionId, String runId) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("session_id", sessionId);
+        if (runId != null) p.put("run_id", runId);
+        return execute("ai", "agent_get_steps", p);
+    }
+
+    public void aiAgentCacheToolResult(String key, Object result, Long ttl) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("key", key); p.put("result", result);
+        if (ttl != null) p.put("ttl", ttl);
+        execute("ai", "agent_cache_tool_result", p);
+    }
+
+    public JsonElement aiAgentGetToolCache(String key) {
+        return execute("ai", "agent_get_tool_cache", Map.of("key", key));
+    }
+
+    // ── AI: Intent ──
+
+    public JsonElement aiClassifyIntent(String query, float[] embedding) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("query", query); p.put("embedding", embedding);
+        return execute("ai", "classify_intent", p);
+    }
+
+    public void aiRegisterIntent(Map<String, Object> intent,
+                                 List<float[]> embeddings) {
+        execute("ai", "register_intent",
+            Map.of("intent", intent, "embeddings", embeddings));
+    }
+
+    public JsonElement aiListIntents() {
+        return execute("ai", "list_intents");
+    }
+
+    // ── AI: Trace ──
+
     public void aiLogTrace(Map<String, Object> record) {
         execute("ai", "log_trace", Map.of("record", record));
     }
@@ -453,6 +640,64 @@ public class Talon implements AutoCloseable {
     public long aiTokenUsageByRun(String runId) {
         return execute("ai", "token_usage_by_run", Map.of("run_id", runId))
             .getAsJsonObject().get("total_tokens").getAsLong();
+    }
+
+    public JsonElement aiTraceStats(String sessionId) {
+        return execute("ai", "trace_stats", Map.of("session_id", sessionId));
+    }
+
+    public JsonElement aiTracePerformanceReport(String sessionId, String runId) {
+        Map<String, Object> p = new HashMap<>();
+        if (sessionId != null) p.put("session_id", sessionId);
+        if (runId != null) p.put("run_id", runId);
+        return execute("ai", "trace_performance_report", p);
+    }
+
+    public JsonElement aiQueryTraces(String sessionId, String runId,
+                                     String operation, Integer limit) {
+        Map<String, Object> p = new HashMap<>();
+        if (sessionId != null) p.put("session_id", sessionId);
+        if (runId != null) p.put("run_id", runId);
+        if (operation != null) p.put("operation", operation);
+        if (limit != null) p.put("limit", limit);
+        return execute("ai", "query_traces", p);
+    }
+
+    // ── AI: Embedding Cache ──
+
+    public JsonElement aiEmbeddingCacheGet(String key) {
+        return execute("ai", "embedding_cache_get", Map.of("key", key));
+    }
+
+    public void aiEmbeddingCacheSet(String key, float[] embedding, Long ttl) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("key", key); p.put("embedding", embedding);
+        if (ttl != null) p.put("ttl", ttl);
+        execute("ai", "embedding_cache_set", p);
+    }
+
+    // ── AI: Token Count ──
+
+    public int aiTokenCount(String text, String encoding) {
+        return execute("ai", "token_count",
+            Map.of("text", text, "encoding", encoding != null ? encoding : "cl100k_base"))
+            .getAsJsonObject().get("count").getAsInt();
+    }
+
+    // ── AI: LLM Config ──
+
+    public void aiSetLlmConfig(Map<String, Object> config) {
+        execute("ai", "set_llm_config", Map.of("config", config));
+    }
+
+    public JsonElement aiGetLlmConfig() {
+        return execute("ai", "get_llm_config");
+    }
+
+    // ── AI: Auto Embed ──
+
+    public JsonElement aiAutoEmbed(List<String> texts) {
+        return execute("ai", "auto_embed", Map.of("texts", texts));
     }
 
     // ── Cluster ──

@@ -283,7 +283,7 @@ namespace TalonDb
                 ["name"] = name, ["ef_search"] = efSearch
             });
 
-        // ── AI ──
+        // ── AI: Session ──
         public void AiCreateSession(string id,
             Dictionary<string, string>? metadata = null, long? ttl = null)
         {
@@ -296,6 +296,15 @@ namespace TalonDb
         public JsonNode AiGetSession(string id) =>
             Execute("ai", "get_session", new() { ["id"] = id });
 
+        public JsonNode AiCreateSessionIfNotExists(string id,
+            Dictionary<string, string>? metadata = null, long? ttl = null)
+        {
+            var p = new Dictionary<string, object> { ["id"] = id };
+            if (metadata != null) p["metadata"] = metadata;
+            if (ttl.HasValue) p["ttl"] = ttl.Value;
+            return Execute("ai", "create_session_if_not_exists", p);
+        }
+
         public JsonNode AiListSessions() => Execute("ai", "list_sessions");
 
         public void AiDeleteSession(string id) =>
@@ -304,6 +313,31 @@ namespace TalonDb
         public void AiUpdateSession(string id, Dictionary<string, string> metadata) =>
             Execute("ai", "update_session", new() { ["id"] = id, ["metadata"] = metadata });
 
+        public long AiCleanupExpiredSessions() =>
+            Execute("ai", "cleanup_expired_sessions")["cleaned"]?.GetValue<long>() ?? 0;
+
+        public void AiArchiveSession(string id) =>
+            Execute("ai", "archive_session", new() { ["id"] = id });
+
+        public void AiUnarchiveSession(string id) =>
+            Execute("ai", "unarchive_session", new() { ["id"] = id });
+
+        public JsonNode AiExportSession(string id) =>
+            Execute("ai", "export_session", new() { ["id"] = id });
+
+        public JsonNode AiSessionStats(string id) =>
+            Execute("ai", "session_stats", new() { ["id"] = id });
+
+        public void AiAddSessionTag(string id, string tag) =>
+            Execute("ai", "add_session_tag", new() { ["id"] = id, ["tag"] = tag });
+
+        public void AiRemoveSessionTag(string id, string tag) =>
+            Execute("ai", "remove_session_tag", new() { ["id"] = id, ["tag"] = tag });
+
+        public JsonNode AiListSessionsByTag(string tag) =>
+            Execute("ai", "list_sessions_by_tag", new() { ["tag"] = tag });
+
+        // ── AI: Context ──
         public long AiClearContext(string sessionId) =>
             Execute("ai", "clear_context", new() { ["session_id"] = sessionId })
                 ["purged"]?.GetValue<long>() ?? 0;
@@ -327,12 +361,41 @@ namespace TalonDb
                 ["session_id"] = sessionId, ["max_tokens"] = maxTokens
             });
 
+        public JsonNode AiGetContextWindowWithPrompt(string sessionId, int maxTokens) =>
+            Execute("ai", "get_context_window_with_prompt", new()
+            {
+                ["session_id"] = sessionId, ["max_tokens"] = maxTokens
+            });
+
         public JsonNode AiGetRecentMessages(string sessionId, int n) =>
             Execute("ai", "get_recent_messages", new()
             {
                 ["session_id"] = sessionId, ["n"] = n
             });
 
+        public void AiSetSystemPrompt(string sessionId, string prompt, int tokenCount = 0) =>
+            Execute("ai", "set_system_prompt", new()
+            {
+                ["session_id"] = sessionId, ["prompt"] = prompt, ["token_count"] = tokenCount
+            });
+
+        public void AiSetContextSummary(string sessionId, string summary, int tokenCount = 0) =>
+            Execute("ai", "set_context_summary", new()
+            {
+                ["session_id"] = sessionId, ["summary"] = summary, ["token_count"] = tokenCount
+            });
+
+        public JsonNode AiGetContextSummary(string sessionId) =>
+            Execute("ai", "get_context_summary", new() { ["session_id"] = sessionId });
+
+        public JsonNode AiAutoSummarize(string sessionId, int? maxTokens = null)
+        {
+            var p = new Dictionary<string, object> { ["session_id"] = sessionId };
+            if (maxTokens.HasValue) p["max_tokens"] = maxTokens.Value;
+            return Execute("ai", "auto_summarize", p);
+        }
+
+        // ── AI: Memory ──
         public void AiStoreMemory(Dictionary<string, object> entry, float[] embedding) =>
             Execute("ai", "store_memory", new() { ["entry"] = entry, ["embedding"] = embedding });
 
@@ -361,6 +424,94 @@ namespace TalonDb
                 ["entries"] = entries, ["embeddings"] = embeddings
             });
 
+        public JsonNode AiDeduplicateMemories(double threshold = 0.95) =>
+            Execute("ai", "deduplicate_memories", new() { ["threshold"] = threshold });
+
+        public long AiCleanupExpiredMemories() =>
+            Execute("ai", "cleanup_expired_memories")["cleaned"]?.GetValue<long>() ?? 0;
+
+        public JsonNode AiMemoryStats() => Execute("ai", "memory_stats");
+
+        // ── AI: RAG ──
+        public void AiRagIngestDocument(Dictionary<string, object> document,
+            Dictionary<string, object>[] chunks, float[][] embeddings) =>
+            Execute("ai", "rag_ingest_document", new()
+            {
+                ["document"] = document, ["chunks"] = chunks, ["embeddings"] = embeddings
+            });
+
+        public void AiRagIngestBatch(Dictionary<string, object>[] documents) =>
+            Execute("ai", "rag_ingest_batch", new() { ["documents"] = documents });
+
+        public JsonNode AiRagSearch(float[] queryEmbedding, int k = 10,
+            Dictionary<string, object>? filter = null)
+        {
+            var p = new Dictionary<string, object>
+            {
+                ["query_embedding"] = queryEmbedding, ["k"] = k
+            };
+            if (filter != null) p["filter"] = filter;
+            return Execute("ai", "rag_search", p);
+        }
+
+        public JsonNode AiRagGetDocument(string docId) =>
+            Execute("ai", "rag_get_document", new() { ["doc_id"] = docId });
+
+        public JsonNode AiRagListDocuments() => Execute("ai", "rag_list_documents");
+
+        public void AiRagDeleteDocument(string docId) =>
+            Execute("ai", "rag_delete_document", new() { ["doc_id"] = docId });
+
+        public void AiRagUpdateDocument(string docId,
+            Dictionary<string, object>[] chunks, float[][] embeddings) =>
+            Execute("ai", "rag_update_document", new()
+            {
+                ["doc_id"] = docId, ["chunks"] = chunks, ["embeddings"] = embeddings
+            });
+
+        public JsonNode AiRagDocumentVersions(string docId) =>
+            Execute("ai", "rag_document_versions", new() { ["doc_id"] = docId });
+
+        // ── AI: Agent ──
+        public void AiAgentLogStep(string sessionId, Dictionary<string, object> step) =>
+            Execute("ai", "agent_log_step", new()
+            {
+                ["session_id"] = sessionId, ["step"] = step
+            });
+
+        public JsonNode AiAgentGetSteps(string sessionId, string? runId = null)
+        {
+            var p = new Dictionary<string, object> { ["session_id"] = sessionId };
+            if (runId != null) p["run_id"] = runId;
+            return Execute("ai", "agent_get_steps", p);
+        }
+
+        public void AiAgentCacheToolResult(string key, object result, long? ttl = null)
+        {
+            var p = new Dictionary<string, object> { ["key"] = key, ["result"] = result };
+            if (ttl.HasValue) p["ttl"] = ttl.Value;
+            Execute("ai", "agent_cache_tool_result", p);
+        }
+
+        public JsonNode AiAgentGetToolCache(string key) =>
+            Execute("ai", "agent_get_tool_cache", new() { ["key"] = key });
+
+        // ── AI: Intent ──
+        public JsonNode AiClassifyIntent(string query, float[] embedding) =>
+            Execute("ai", "classify_intent", new()
+            {
+                ["query"] = query, ["embedding"] = embedding
+            });
+
+        public void AiRegisterIntent(Dictionary<string, object> intent, float[][] embeddings) =>
+            Execute("ai", "register_intent", new()
+            {
+                ["intent"] = intent, ["embeddings"] = embeddings
+            });
+
+        public JsonNode AiListIntents() => Execute("ai", "list_intents");
+
+        // ── AI: Trace ──
         public void AiLogTrace(Dictionary<string, object> record) =>
             Execute("ai", "log_trace", new() { ["record"] = record });
 
@@ -371,6 +522,54 @@ namespace TalonDb
         public long AiTokenUsageByRun(string runId) =>
             Execute("ai", "token_usage_by_run", new() { ["run_id"] = runId })
                 ["total_tokens"]?.GetValue<long>() ?? 0;
+
+        public JsonNode AiTraceStats(string sessionId) =>
+            Execute("ai", "trace_stats", new() { ["session_id"] = sessionId });
+
+        public JsonNode AiTracePerformanceReport(string? sessionId = null, string? runId = null)
+        {
+            var p = new Dictionary<string, object>();
+            if (sessionId != null) p["session_id"] = sessionId;
+            if (runId != null) p["run_id"] = runId;
+            return Execute("ai", "trace_performance_report", p);
+        }
+
+        public JsonNode AiQueryTraces(string? sessionId = null, string? runId = null,
+            string? operation = null, int? limit = null)
+        {
+            var p = new Dictionary<string, object>();
+            if (sessionId != null) p["session_id"] = sessionId;
+            if (runId != null) p["run_id"] = runId;
+            if (operation != null) p["operation"] = operation;
+            if (limit.HasValue) p["limit"] = limit.Value;
+            return Execute("ai", "query_traces", p);
+        }
+
+        // ── AI: Embedding Cache ──
+        public JsonNode AiEmbeddingCacheGet(string key) =>
+            Execute("ai", "embedding_cache_get", new() { ["key"] = key });
+
+        public void AiEmbeddingCacheSet(string key, float[] embedding, long? ttl = null)
+        {
+            var p = new Dictionary<string, object> { ["key"] = key, ["embedding"] = embedding };
+            if (ttl.HasValue) p["ttl"] = ttl.Value;
+            Execute("ai", "embedding_cache_set", p);
+        }
+
+        // ── AI: Token Count ──
+        public int AiTokenCount(string text, string encoding = "cl100k_base") =>
+            Execute("ai", "token_count", new() { ["text"] = text, ["encoding"] = encoding })
+                ["count"]?.GetValue<int>() ?? 0;
+
+        // ── AI: LLM Config ──
+        public void AiSetLlmConfig(Dictionary<string, object> config) =>
+            Execute("ai", "set_llm_config", new() { ["config"] = config });
+
+        public JsonNode AiGetLlmConfig() => Execute("ai", "get_llm_config");
+
+        // ── AI: Auto Embed ──
+        public JsonNode AiAutoEmbed(string[] texts) =>
+            Execute("ai", "auto_embed", new() { ["texts"] = texts });
 
         // ── Cluster ──
 
