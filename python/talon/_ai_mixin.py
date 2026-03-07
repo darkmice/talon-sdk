@@ -19,7 +19,7 @@ class AiMixin:
                           ttl: Optional[int] = None):
         """创建 AI 会话。"""
         p: Dict[str, Any] = {"id": id}
-        if metadata:
+        if metadata is not None:
             p["metadata"] = metadata
         if ttl is not None:
             p["ttl"] = ttl
@@ -38,7 +38,7 @@ class AiMixin:
         返回 {"session": {...}, "is_new": bool}。
         """
         p: Dict[str, Any] = {"id": id}
-        if metadata:
+        if metadata is not None:
             p["metadata"] = metadata
         if ttl is not None:
             p["ttl"] = ttl
@@ -223,6 +223,9 @@ class AiMixin:
     def ai_store_memories_batch(self, entries: List[Dict],
                                 embeddings: List[List[float]]):
         """批量存储记忆。"""
+        if len(entries) != len(embeddings):
+            raise ValueError(
+                f"entries({len(entries)}) 和 embeddings({len(embeddings)}) 长度不一致")
         self._execute("ai", "store_memories_batch", {
             "entries": entries, "embeddings": embeddings,
         })
@@ -256,6 +259,9 @@ class AiMixin:
             chunks: [{"chunk_id": str, "content": str, "metadata": dict}, ...]
             embeddings: 与 chunks 一一对应的向量列表
         """
+        if len(chunks) != len(embeddings):
+            raise ValueError(
+                f"chunks({len(chunks)}) 和 embeddings({len(embeddings)}) 长度不一致")
         self._execute("ai", "rag_ingest_document", {
             "document": document,
             "chunks": chunks,
