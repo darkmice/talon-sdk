@@ -17,44 +17,141 @@ const fs = require('fs');
 const os = require('os');
 
 /**
+ * 获取用户缓存目录。
+ * @returns {string}
+ */
+function cacheDir() {
+  const version = require('./package.json').version;
+  const base = process.env.TALON_CACHE_DIR || (() => {
+    const plat = os.platform();
+    if (plat === 'darwin') return path.join(os.homedir(), 'Library', 'Caches', 'talon');
+    if (plat === 'win32') return path.join(process.env.LOCALAPPDATA || os.homedir(), 'talon', 'cache');
+    return path.join(process.env.XDG_CACHE_HOME || path.join(os.homedir(), '.cache'), 'talon');
+  })();
+  return path.join(base, version);
+}
+
+/**
+ * 获取平台信息。
+ * @returns {{ libName: string, platDir: string, releaseName: string }}
+ */
+function platformInfo() {
+  const plat = os.platform();
+  const arch = os.arch();
+
+  let libName, platArch;
+  if (arch === 'arm64') platArch = 'arm64';
+  else if (arch === 'loong64') platArch = 'loongarch64';
+  else if (arch === 'riscv64') platArch = 'riscv64';
+  else platArch = 'amd64';
+
+  if (plat === 'darwin') {
+    libName = 'libtalon.dylib';
+  } else if (plat === 'win32') {
+    libName = 'talon.dll';
+  } else {
+    libName = 'libtalon.so';
+  }
+
+  const platDir = plat === 'darwin' ? `darwin_${platArch}`
+    : plat === 'win32' ? `windows_${platArch}` : `linux_${platArch}`;
+  const releaseName = plat === 'darwin' ? `talon-macos-${platArch}`
+    : plat === 'win32' ? `talon-windows-${platArch}` : `talon-linux-${platArch}`;
+
+  return { libName, platDir, releaseName };
+}
+
+/**
+ * 同步下载原生库到指定目录。
+ * @param {string} destDir
+ * @returns {string|null}
+ */
+function downloadLibSync(destDir) {
+  const { execSync } = require('child_process');
+  const { libName, releaseName } = platformInfo();
+  const version = require('./package.json').version;
+  const repo = 'darkmice/talon-bin';
+  const archiveName = `libtalon-${releaseName}.tar.gz`;
+  const url = `https://github.com/${repo}/releases/download/v${version}/${archiveName}`;
+  const archivePath = path.join(destDir, archiveName);
+
+  try {
+    fs.mkdirSync(destDir, { recursive: true });
+    console.log(`[talon] Downloading native library v${version} for ${releaseName}...`);
+    execSync(`curl -fSL --retry 3 -o "${archivePath}" "${url}"`, { stdio: 'pipe' });
+
+    // 校验下载大小
+    const stat = fs.statSync(archivePath);
+    if (stat.size < 1024) {
+      console.warn('[talon] Warning: downloaded archive too small, likely corrupted');
+      fs.unlinkSync(archivePath);
+      return null;
+    }
+
+    execSync(`tar -xzf "${archivePath}" -C "${destDir}"`, { stdio: 'pipe' });
+    fs.unlinkSync(archivePath);
+
+    const libPath = path.join(destDir, libName);
+    if (fs.existsSync(libPath)) {
+      console.log(`[talon] Native library ready: ${libPath}`);
+      return libPath;
+    }
+    return null;
+  } catch (err) {
+    console.warn(`[talon] Failed to download native library: ${err.message}`);
+    console.warn('[talon] Set TALON_LIB_PATH or run: npm run postinstall');
+    if (fs.existsSync(archivePath)) fs.unlinkSync(archivePath);
+    return null;
+  }
+}
+
+/**
  * 查找 libtalon 动态库路径。
+ *
+ * 搜索顺序：
+ * 1. 手动指定的 libPath 参数
+ * 2. TALON_LIB_PATH 环境变量
+ * 3. npm 包内 native/ 目录（postinstall 下载）
+ * 4. SDK 开发目录 lib/{platform}/
+ * 5. 缓存目录（自动下载）
+ * 6. 系统库路径 fallback
+ *
  * @param {string} [libPath] - 手动指定路径
  * @returns {string}
  */
 function findLib(libPath) {
   if (libPath && fs.existsSync(libPath)) return libPath;
 
+  // 1. 环境变量
   const env = process.env.TALON_LIB_PATH;
   if (env && fs.existsSync(env)) return env;
 
-  const plat = os.platform();
-  const arch = os.arch();
-  const name = plat === 'darwin' ? 'libtalon.dylib'
-    : plat === 'win32' ? 'talon.dll' : 'libtalon.so';
+  const { libName, platDir } = platformInfo();
 
-  // 平台目录名
-  let platArch;
-  if (arch === 'arm64') platArch = 'arm64';
-  else if (arch === 'loong64') platArch = 'loongarch64';
-  else if (arch === 'riscv64') platArch = 'riscv64';
-  else platArch = 'amd64';
-  const platDir = plat === 'darwin' ? `darwin_${platArch}`
-    : plat === 'win32' ? `windows_${platArch}` : `linux_${platArch}`;
-
-  // 1. npm 包内 native/ 目录 (postinstall 下载)
-  const nativeDir = path.join(__dirname, 'native', name);
+  // 2. npm 包内 native/ 目录 (postinstall 下载)
+  const nativeDir = path.join(__dirname, 'native', libName);
   if (fs.existsSync(nativeDir)) return nativeDir;
 
-  // 2. SDK 内嵌库: talon-sdk/lib/{platform}/
+  // 3. SDK 开发目录: talon-sdk/lib/{platform}/
   const sdkRoot = path.resolve(__dirname, '..');
-  const bundled = path.join(sdkRoot, 'lib', platDir, name);
+  const bundled = path.join(sdkRoot, 'lib', platDir, libName);
   if (fs.existsSync(bundled)) return bundled;
 
-  // 3. 同目录
-  const local = path.join(__dirname, name);
+  // 4. 同目录
+  const local = path.join(__dirname, libName);
   if (fs.existsSync(local)) return local;
 
-  return name;
+  // 5. 缓存目录（自动下载）
+  const cache = cacheDir();
+  const cached = path.join(cache, libName);
+  if (fs.existsSync(cached)) return cached;
+
+  // 尝试自动下载
+  const downloaded = downloadLibSync(cache);
+  if (downloaded) return downloaded;
+
+  // 6. Fallback 到系统路径
+  return libName;
 }
 
 /**

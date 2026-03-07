@@ -7,8 +7,15 @@
 // Package talon 提供 Talon 数据库的 Go SDK。
 //
 // 通过 cgo 封装 talon_execute C ABI，零额外依赖。
-// 预编译库已内嵌，go get 后直接可用。
+// 预编译库需要先下载，使用以下任一方式：
+//
+//	go generate ./...              # 自动下载
+//	./scripts/setup.sh             # 手动运行
+//	make setup                     # 通过 Makefile
+//	TALON_LIB_PATH=/path/to/lib   # 手动指定
 package talon
+
+//go:generate bash ./scripts/setup.sh
 
 /*
 #include <stdlib.h>
