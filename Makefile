@@ -1,9 +1,9 @@
 # Talon Go SDK — 预编译库下载
 #
 # 从 talon-bin GitHub Releases 下载对应平台的 libtalon.a 静态库。
-# 用法：make setup VERSION=0.1.3
+# 用法：make setup VERSION=0.1.0
 
-VERSION ?= 0.1.3
+VERSION ?= 0.1.0
 REPO    := darkmice/talon-bin
 LIB_DIR := lib
 
