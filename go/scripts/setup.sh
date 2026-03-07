@@ -69,8 +69,13 @@ cache_dir() {
     return
   fi
   case "$(uname -s)" in
-    Darwin) echo "${HOME}/Library/Caches/talon/${VERSION}" ;;
-    *)      echo "${XDG_CACHE_HOME:-${HOME}/.cache}/talon/${VERSION}" ;;
+    Darwin)
+      echo "${HOME}/Library/Caches/talon/${VERSION}" ;;
+    MINGW*|MSYS*|CYGWIN*)
+      local appdata="${LOCALAPPDATA:-${HOME}}"
+      echo "${appdata}/talon/cache/${VERSION}" ;;
+    *)
+      echo "${XDG_CACHE_HOME:-${HOME}/.cache}/talon/${VERSION}" ;;
   esac
 }
 
