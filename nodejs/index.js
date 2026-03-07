@@ -237,17 +237,35 @@ class Talon {
     this._execute('vector', 'set_ef_search', { name, ef_search: efSearch });
   }
 
-  // ── AI ──
+  // ── AI: Session ──
   aiCreateSession(id, metadata, ttl) {
     const p = { id }; if (metadata) p.metadata = metadata; if (ttl != null) p.ttl = ttl;
     this._execute('ai', 'create_session', p);
   }
   aiGetSession(id) { return this._execute('ai', 'get_session', { id }).session || {}; }
+  aiCreateSessionIfNotExists(id, metadata, ttl) {
+    const p = { id }; if (metadata) p.metadata = metadata; if (ttl != null) p.ttl = ttl;
+    return this._execute('ai', 'create_session_if_not_exists', p);
+  }
   aiListSessions() { return this._execute('ai', 'list_sessions').sessions || []; }
   aiDeleteSession(id) { this._execute('ai', 'delete_session', { id }); }
   aiUpdateSession(id, metadata) {
     this._execute('ai', 'update_session', { id, metadata });
   }
+  aiCleanupExpiredSessions() {
+    return this._execute('ai', 'cleanup_expired_sessions').cleaned || 0;
+  }
+  aiArchiveSession(id) { this._execute('ai', 'archive_session', { id }); }
+  aiUnarchiveSession(id) { this._execute('ai', 'unarchive_session', { id }); }
+  aiExportSession(id) { return this._execute('ai', 'export_session', { id }); }
+  aiSessionStats(id) { return this._execute('ai', 'session_stats', { id }); }
+  aiAddSessionTag(id, tag) { this._execute('ai', 'add_session_tag', { id, tag }); }
+  aiRemoveSessionTag(id, tag) { this._execute('ai', 'remove_session_tag', { id, tag }); }
+  aiListSessionsByTag(tag) {
+    return this._execute('ai', 'list_sessions_by_tag', { tag }).sessions || [];
+  }
+
+  // ── AI: Context ──
   aiClearContext(sessionId) {
     return this._execute('ai', 'clear_context', { session_id: sessionId }).purged || 0;
   }
@@ -263,11 +281,36 @@ class Talon {
       session_id: sessionId, max_tokens: maxTokens,
     }).messages || [];
   }
+  aiGetContextWindowWithPrompt(sessionId, maxTokens) {
+    return this._execute('ai', 'get_context_window_with_prompt', {
+      session_id: sessionId, max_tokens: maxTokens,
+    }).messages || [];
+  }
   aiGetRecentMessages(sessionId, n) {
     return this._execute('ai', 'get_recent_messages', {
       session_id: sessionId, n,
     }).messages || [];
   }
+  aiSetSystemPrompt(sessionId, prompt, tokenCount = 0) {
+    this._execute('ai', 'set_system_prompt', {
+      session_id: sessionId, prompt, token_count: tokenCount,
+    });
+  }
+  aiSetContextSummary(sessionId, summary, tokenCount = 0) {
+    this._execute('ai', 'set_context_summary', {
+      session_id: sessionId, summary, token_count: tokenCount,
+    });
+  }
+  aiGetContextSummary(sessionId) {
+    return this._execute('ai', 'get_context_summary', { session_id: sessionId }).summary;
+  }
+  aiAutoSummarize(sessionId, maxTokens) {
+    const p = { session_id: sessionId };
+    if (maxTokens != null) p.max_tokens = maxTokens;
+    return this._execute('ai', 'auto_summarize', p);
+  }
+
+  // ── AI: Memory ──
   aiStoreMemory(entry, embedding) {
     this._execute('ai', 'store_memory', { entry, embedding });
   }
@@ -285,12 +328,115 @@ class Talon {
   aiStoreMemoriesBatch(entries, embeddings) {
     this._execute('ai', 'store_memories_batch', { entries, embeddings });
   }
+  aiDeduplicateMemories(threshold = 0.95) {
+    return this._execute('ai', 'deduplicate_memories', { threshold }).duplicates || [];
+  }
+  aiCleanupExpiredMemories() {
+    return this._execute('ai', 'cleanup_expired_memories').cleaned || 0;
+  }
+  aiMemoryStats() { return this._execute('ai', 'memory_stats'); }
+
+  // ── AI: RAG ──
+  aiRagIngestDocument(document, chunks, embeddings) {
+    this._execute('ai', 'rag_ingest_document', { document, chunks, embeddings });
+  }
+  aiRagIngestBatch(documents) {
+    this._execute('ai', 'rag_ingest_batch', { documents });
+  }
+  aiRagSearch(queryEmbedding, k = 10, filter) {
+    const p = { query_embedding: queryEmbedding, k };
+    if (filter != null) p.filter = filter;
+    return this._execute('ai', 'rag_search', p).results || [];
+  }
+  aiRagGetDocument(docId) {
+    return this._execute('ai', 'rag_get_document', { doc_id: docId }).document;
+  }
+  aiRagListDocuments() {
+    return this._execute('ai', 'rag_list_documents').documents || [];
+  }
+  aiRagDeleteDocument(docId) {
+    this._execute('ai', 'rag_delete_document', { doc_id: docId });
+  }
+  aiRagUpdateDocument(docId, chunks, embeddings) {
+    this._execute('ai', 'rag_update_document', { doc_id: docId, chunks, embeddings });
+  }
+  aiRagDocumentVersions(docId) {
+    return this._execute('ai', 'rag_document_versions', { doc_id: docId }).versions || [];
+  }
+
+  // ── AI: Agent ──
+  aiAgentLogStep(sessionId, step) {
+    this._execute('ai', 'agent_log_step', { session_id: sessionId, step });
+  }
+  aiAgentGetSteps(sessionId, runId) {
+    const p = { session_id: sessionId };
+    if (runId != null) p.run_id = runId;
+    return this._execute('ai', 'agent_get_steps', p).steps || [];
+  }
+  aiAgentCacheToolResult(key, result, ttl) {
+    const p = { key, result }; if (ttl != null) p.ttl = ttl;
+    this._execute('ai', 'agent_cache_tool_result', p);
+  }
+  aiAgentGetToolCache(key) {
+    return this._execute('ai', 'agent_get_tool_cache', { key }).result;
+  }
+
+  // ── AI: Intent ──
+  aiClassifyIntent(query, embedding) {
+    return this._execute('ai', 'classify_intent', { query, embedding });
+  }
+  aiRegisterIntent(intent, embeddings) {
+    this._execute('ai', 'register_intent', { intent, embeddings });
+  }
+  aiListIntents() { return this._execute('ai', 'list_intents').intents || []; }
+
+  // ── AI: Trace ──
   aiLogTrace(record) { this._execute('ai', 'log_trace', { record }); }
   aiTokenUsage(sessionId) {
     return this._execute('ai', 'token_usage', { session_id: sessionId }).total_tokens || 0;
   }
   aiTokenUsageByRun(runId) {
     return this._execute('ai', 'token_usage_by_run', { run_id: runId }).total_tokens || 0;
+  }
+  aiTraceStats(sessionId) {
+    return this._execute('ai', 'trace_stats', { session_id: sessionId });
+  }
+  aiTracePerformanceReport(sessionId, runId) {
+    const p = {};
+    if (sessionId != null) p.session_id = sessionId;
+    if (runId != null) p.run_id = runId;
+    return this._execute('ai', 'trace_performance_report', p);
+  }
+  aiQueryTraces(opts = {}) {
+    const p = {};
+    if (opts.sessionId != null) p.session_id = opts.sessionId;
+    if (opts.runId != null) p.run_id = opts.runId;
+    if (opts.operation != null) p.operation = opts.operation;
+    if (opts.limit != null) p.limit = opts.limit;
+    return this._execute('ai', 'query_traces', p).traces || [];
+  }
+
+  // ── AI: Embedding Cache ──
+  aiEmbeddingCacheGet(key) {
+    return this._execute('ai', 'embedding_cache_get', { key }).embedding;
+  }
+  aiEmbeddingCacheSet(key, embedding, ttl) {
+    const p = { key, embedding }; if (ttl != null) p.ttl = ttl;
+    this._execute('ai', 'embedding_cache_set', p);
+  }
+
+  // ── AI: Token Count ──
+  aiTokenCount(text, encoding = 'cl100k_base') {
+    return this._execute('ai', 'token_count', { text, encoding }).count || 0;
+  }
+
+  // ── AI: LLM Config ──
+  aiSetLlmConfig(config) { this._execute('ai', 'set_llm_config', { config }); }
+  aiGetLlmConfig() { return this._execute('ai', 'get_llm_config'); }
+
+  // ── AI: Auto Embed ──
+  aiAutoEmbed(texts) {
+    return this._execute('ai', 'auto_embed', { texts }).embeddings || [];
   }
 
   // ── Cluster ──
