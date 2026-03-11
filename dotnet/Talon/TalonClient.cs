@@ -571,6 +571,59 @@ namespace TalonDb
         public JsonNode AiAutoEmbed(string[] texts) =>
             Execute("ai", "auto_embed", new() { ["texts"] = texts });
 
+        /// <summary>清除 LLM 配置。</summary>
+        public void AiClearLlmConfig() => Execute("ai", "clear_llm_config");
+
+        /// <summary>存储记忆（自动 embed + 向量写 + FTS 索引 + 缓存）。</summary>
+        /// <remarks>
+        /// 自动完成以下操作：
+        /// 1. 调用 Embedding API 生成向量（自带 FNV 哈希缓存）
+        /// 2. 写入向量索引（语义搜索）
+        /// 3. 写入 FTS 索引（关键词搜索）
+        /// 4. 存储元数据到 KV
+        /// </remarks>
+        public long AiAddMemory(string content,
+            Dictionary<string, string>? metadata = null, long? ttlSecs = null)
+        {
+            var p = new Dictionary<string, object> { ["content"] = content };
+            if (metadata != null) p["metadata"] = metadata;
+            if (ttlSecs.HasValue) p["ttl_secs"] = ttlSecs.Value;
+            return Execute("ai", "add_memory", p)["id"]?.GetValue<long>() ?? 0;
+        }
+
+        /// <summary>智能召回（hybrid search: BM25 + 向量，RRF 融合）。</summary>
+        public JsonNode AiRecall(string query, int k = 10,
+            double ftsWeight = 0.4, double vecWeight = 0.6) =>
+            Execute("ai", "recall", new()
+            {
+                ["query"] = query, ["k"] = k,
+                ["fts_weight"] = ftsWeight, ["vec_weight"] = vecWeight
+            });
+
+        /// <summary>向量搜索 + metadata 过滤。</summary>
+        public JsonNode AiSearchMemoryWithFilter(float[] embedding, int k = 10,
+            Dictionary<string, string>? filters = null)
+        {
+            var p = new Dictionary<string, object> { ["embedding"] = embedding, ["k"] = k };
+            if (filters != null) p["filters"] = filters;
+            return Execute("ai", "search_memory_with_filter", p);
+        }
+
+        /// <summary>查找重复记忆对（不删除）。</summary>
+        public JsonNode AiFindDuplicateMemories(double threshold = 0.05) =>
+            Execute("ai", "find_duplicate_memories", new() { ["threshold"] = threshold });
+
+        /// <summary>分页列出记忆。</summary>
+        public JsonNode AiListMemories(int offset = 0, int limit = 100) =>
+            Execute("ai", "list_memories", new() { ["offset"] = offset, ["limit"] = limit });
+
+        /// <summary>智能上下文窗口：超长时自动触发摘要压缩。</summary>
+        public JsonNode AiGetContextWindowSmart(string sessionId, int maxTokens = 4096) =>
+            Execute("ai", "get_context_window_smart", new()
+            {
+                ["session_id"] = sessionId, ["max_tokens"] = maxTokens
+            });
+
         // ── Cluster ──
 
         /// <summary>查询集群状态（角色/LSN/从节点列表）。</summary>

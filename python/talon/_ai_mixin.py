@@ -247,6 +247,92 @@ class AiMixin:
         """获取记忆统计信息。"""
         return self._execute("ai", "memory_stats")
 
+    def ai_add_memory(self, content: str,
+                      metadata: Optional[Dict[str, str]] = None,
+                      ttl_secs: Optional[int] = None) -> int:
+        """存储记忆（自动 embed + 向量写 + FTS 索引 + 缓存）。
+
+        自动完成以下操作：
+        1. 调用 Embedding API 生成向量（自带 FNV 哈希缓存）
+        2. 写入向量索引（语义搜索）
+        3. 写入 FTS 索引（关键词搜索）
+        4. 存储元数据到 KV
+
+        需要先调用 ai_set_llm_config 配置 embed provider。
+        返回记忆 ID。
+        """
+        p: Dict[str, Any] = {"content": content}
+        if metadata is not None:
+            p["metadata"] = metadata
+        if ttl_secs is not None:
+            p["ttl_secs"] = ttl_secs
+        data = self._execute("ai", "add_memory", p)
+        return data.get("id", 0)
+
+    def ai_recall(self, query: str, k: int = 10,
+                  fts_weight: float = 0.4,
+                  vec_weight: float = 0.6) -> List[Dict]:
+        """智能召回（hybrid search: BM25 + 向量，RRF 融合）。
+
+        两路检索融合：
+        - FTS BM25 路：关键词精确匹配（提升 Single Hop 类问题）
+        - Vector 路：语义相似度（保持 Open Domain 优势）
+        - RRF 融合排序：无需分数归一化，基于排名融合
+
+        Args:
+            query: 搜索查询文本
+            k: 返回结果数量
+            fts_weight: FTS 路权重（默认 0.4）
+            vec_weight: 向量路权重（默认 0.6）
+
+        返回 HybridRecallResult 列表（含 rrf_score, bm25_score, vector_dist）。
+        需要先调用 ai_set_llm_config 配置 embed provider。
+        """
+        data = self._execute("ai", "recall", {
+            "query": query, "k": k,
+            "fts_weight": fts_weight, "vec_weight": vec_weight,
+        })
+        return data.get("results", [])
+
+    def ai_search_memory_with_filter(self, embedding: List[float],
+                                      k: int = 10,
+                                      filters: Optional[Dict[str, str]] = None) -> List[Dict]:
+        """向量搜索 + metadata 过滤。"""
+        p: Dict[str, Any] = {"embedding": embedding, "k": k}
+        if filters:
+            p["filters"] = filters
+        data = self._execute("ai", "search_memory_with_filter", p)
+        return data.get("results", [])
+
+    def ai_find_duplicate_memories(self,
+                                    threshold: float = 0.05) -> List[Dict]:
+        """查找重复记忆对（不删除）。"""
+        data = self._execute("ai", "find_duplicate_memories", {
+            "threshold": threshold,
+        })
+        return data.get("pairs", [])
+
+    def ai_list_memories(self, offset: int = 0,
+                          limit: int = 100) -> List[Dict]:
+        """分页列出记忆。"""
+        data = self._execute("ai", "list_memories", {
+            "offset": offset, "limit": limit,
+        })
+        return data.get("entries", [])
+
+    def ai_clear_llm_config(self):
+        """清除 LLM 配置（回到手动模式）。"""
+        self._execute("ai", "clear_llm_config")
+
+    def ai_get_context_window_smart(self, session_id: str,
+                                     max_tokens: int = 4096) -> List[Dict]:
+        """智能上下文窗口：超长时自动触发摘要压缩。"""
+        data = self._execute("ai", "get_context_window_smart", {
+            "session_id": session_id,
+            "max_tokens": max_tokens,
+        })
+        return data.get("messages", [])
+
     # ── AI: RAG ──
 
     def ai_rag_ingest_document(self, document: Dict,

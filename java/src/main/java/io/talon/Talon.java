@@ -700,6 +700,68 @@ public class Talon implements AutoCloseable {
         return execute("ai", "auto_embed", Map.of("texts", texts));
     }
 
+    /** 清除 LLM 配置。 */
+    public void aiClearLlmConfig() {
+        execute("ai", "clear_llm_config");
+    }
+
+    /** 存储记忆（自动 embed + 向量写 + FTS 索引 + 缓存）。
+     *
+     *  自动完成以下操作：
+     *  1. 调用 Embedding API 生成向量（自带 FNV 哈希缓存）
+     *  2. 写入向量索引（语义搜索）
+     *  3. 写入 FTS 索引（关键词搜索）
+     *  4. 存储元数据到 KV
+     *
+     *  需要先调用 aiSetLlmConfig 配置 embed provider。 */
+    public long aiAddMemory(String content,
+                            Map<String, String> metadata, Long ttlSecs) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("content", content);
+        if (metadata != null) p.put("metadata", metadata);
+        if (ttlSecs != null) p.put("ttl_secs", ttlSecs);
+        return execute("ai", "add_memory", p)
+            .getAsJsonObject().get("id").getAsLong();
+    }
+
+    /** 智能召回（hybrid search: BM25 + 向量，RRF 融合）。 */
+    public JsonElement aiRecall(String query, int k,
+                                double ftsWeight, double vecWeight) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("query", query); p.put("k", k);
+        p.put("fts_weight", ftsWeight); p.put("vec_weight", vecWeight);
+        return execute("ai", "recall", p);
+    }
+
+    /** 向量搜索 + metadata 过滤。 */
+    public JsonElement aiSearchMemoryWithFilter(float[] embedding, int k,
+                                                 Map<String, String> filters) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("embedding", embedding); p.put("k", k);
+        if (filters != null) p.put("filters", filters);
+        return execute("ai", "search_memory_with_filter", p);
+    }
+
+    /** 查找重复记忆对（不删除）。 */
+    public JsonElement aiFindDuplicateMemories(double threshold) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("threshold", threshold);
+        return execute("ai", "find_duplicate_memories", p);
+    }
+
+    /** 分页列出记忆。 */
+    public JsonElement aiListMemories(int offset, int limit) {
+        Map<String, Object> p = new HashMap<>();
+        p.put("offset", offset); p.put("limit", limit);
+        return execute("ai", "list_memories", p);
+    }
+
+    /** 智能上下文窗口：超长时自动触发摘要压缩。 */
+    public JsonElement aiGetContextWindowSmart(String sessionId, int maxTokens) {
+        return execute("ai", "get_context_window_smart",
+            Map.of("session_id", sessionId, "max_tokens", maxTokens));
+    }
+
     // ── Cluster ──
 
     /** 查询集群状态（角色/LSN/从节点列表）。 */

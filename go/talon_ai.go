@@ -508,6 +508,80 @@ func (db *DB) AiAutoEmbed(texts []string) (json.RawMessage, error) {
 	return db.execute("ai", "auto_embed", map[string]interface{}{"texts": texts})
 }
 
+// AiClearLlmConfig 清除 LLM 配置。
+func (db *DB) AiClearLlmConfig() error {
+	_, err := db.execute("ai", "clear_llm_config", nil)
+	return err
+}
+
+// AiAddMemory 存储记忆（自动 embed + 向量写 + FTS 索引 + 缓存）。
+//
+// 自动完成以下操作：
+//  1. 调用 Embedding API 生成向量（自带 FNV 哈希缓存）
+//  2. 写入向量索引（语义搜索）
+//  3. 写入 FTS 索引（关键词搜索）
+//  4. 存储元数据到 KV
+//
+// 需要先调用 AiSetLlmConfig 配置 embed provider。
+func (db *DB) AiAddMemory(content string, metadata map[string]string, ttlSecs *uint64) (uint64, error) {
+	p := map[string]interface{}{"content": content}
+	if metadata != nil {
+		p["metadata"] = metadata
+	}
+	if ttlSecs != nil {
+		p["ttl_secs"] = *ttlSecs
+	}
+	data, err := db.execute("ai", "add_memory", p)
+	if err != nil {
+		return 0, err
+	}
+	var out struct {
+		ID uint64 `json:"id"`
+	}
+	return out.ID, json.Unmarshal(data, &out)
+}
+
+// AiRecall 智能召回（hybrid search: BM25 + 向量，RRF 融合）。
+// 两路检索融合：
+//   - FTS BM25 路：关键词精确匹配
+//   - Vector 路：语义相似度
+//   - RRF 融合排序：基于排名融合
+func (db *DB) AiRecall(query string, k int, ftsWeight, vecWeight float64) (json.RawMessage, error) {
+	p := map[string]interface{}{
+		"query": query, "k": k,
+		"fts_weight": ftsWeight, "vec_weight": vecWeight,
+	}
+	return db.execute("ai", "recall", p)
+}
+
+// AiSearchMemoryWithFilter 向量搜索 + metadata 过滤。
+func (db *DB) AiSearchMemoryWithFilter(embedding []float32, k int, filters map[string]string) (json.RawMessage, error) {
+	p := map[string]interface{}{"embedding": embedding, "k": k}
+	if filters != nil {
+		p["filters"] = filters
+	}
+	return db.execute("ai", "search_memory_with_filter", p)
+}
+
+// AiFindDuplicateMemories 查找重复记忆对（不删除）。
+func (db *DB) AiFindDuplicateMemories(threshold float64) (json.RawMessage, error) {
+	return db.execute("ai", "find_duplicate_memories", map[string]interface{}{"threshold": threshold})
+}
+
+// AiListMemories 分页列出记忆。
+func (db *DB) AiListMemories(offset, limit int) (json.RawMessage, error) {
+	return db.execute("ai", "list_memories", map[string]interface{}{
+		"offset": offset, "limit": limit,
+	})
+}
+
+// AiGetContextWindowSmart 智能上下文窗口：超长时自动触发摘要压缩。
+func (db *DB) AiGetContextWindowSmart(sessionID string, maxTokens int) (json.RawMessage, error) {
+	return db.execute("ai", "get_context_window_smart", map[string]interface{}{
+		"session_id": sessionID, "max_tokens": maxTokens,
+	})
+}
+
 // ── Backup ──
 
 // ExportDb 导出数据库，返回导出数量。

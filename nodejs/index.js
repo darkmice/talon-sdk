@@ -530,10 +530,67 @@ class Talon {
   // ── AI: LLM Config ──
   aiSetLlmConfig(config) { this._execute('ai', 'set_llm_config', { config }); }
   aiGetLlmConfig() { return this._execute('ai', 'get_llm_config'); }
+  aiClearLlmConfig() { this._execute('ai', 'clear_llm_config'); }
 
-  // ── AI: Auto Embed ──
-  aiAutoEmbed(texts) {
-    return this._execute('ai', 'auto_embed', { texts }).embeddings || [];
+  // ── AI: Auto Embed (需要先配置 LLM) ──
+
+  /**
+   * 存储记忆（自动 embed + 向量写 + FTS 索引 + 缓存）。
+   * @param {string} content - 记忆内容
+   * @param {Record<string,string>} [metadata={}] - 元数据
+   * @param {number} [ttlSecs] - 过期时间（秒）
+   */
+  aiAddMemory(content, metadata = {}, ttlSecs) {
+    const p = { content, metadata };
+    if (ttlSecs != null) p.ttl_secs = ttlSecs;
+    return this._execute('ai', 'add_memory', p);
+  }
+
+  /**
+   * 智能召回（hybrid search: BM25 + 向量，RRF 融合）。
+   * @param {string} query - 搜索查询
+   * @param {number} [k=10] - 返回数量
+   * @param {number} [ftsWeight=0.4] - FTS 权重
+   * @param {number} [vecWeight=0.6] - 向量权重
+   */
+  aiRecall(query, k = 10, ftsWeight = 0.4, vecWeight = 0.6) {
+    return this._execute('ai', 'recall', {
+      query, k, fts_weight: ftsWeight, vec_weight: vecWeight,
+    }).results || [];
+  }
+
+  // ── AI: Auto Summarize (需要先配置 LLM) ──
+  aiAutoSummarize(sessionId, opts = {}) {
+    const p = { session_id: sessionId };
+    if (opts.maxSummaryTokens != null) p.max_summary_tokens = opts.maxSummaryTokens;
+    if (opts.purgeOld != null) p.purge_old = opts.purgeOld;
+    if (opts.customPrompt != null) p.custom_prompt = opts.customPrompt;
+    return this._execute('ai', 'auto_summarize', p);
+  }
+  aiGetContextWindowSmart(sessionId, maxTokens = 4096) {
+    return this._execute('ai', 'get_context_window_smart', {
+      session_id: sessionId, max_tokens: maxTokens,
+    }).messages || [];
+  }
+
+  // ── AI: Memory Advanced ──
+  aiSearchMemoryWithFilter(embedding, k = 10, filters = {}) {
+    return this._execute('ai', 'search_memory_with_filter', {
+      embedding, k, filters,
+    }).results || [];
+  }
+  aiFindDuplicateMemories(threshold = 0.05) {
+    return this._execute('ai', 'find_duplicate_memories', { threshold }).pairs || [];
+  }
+  aiDeduplicateMemories(threshold = 0.05) {
+    return this._execute('ai', 'deduplicate_memories', { threshold }).deduplicated || 0;
+  }
+  aiListMemories(offset = 0, limit = 100) {
+    return this._execute('ai', 'list_memories', { offset, limit }).entries || [];
+  }
+  aiMemoryStats() { return this._execute('ai', 'memory_stats').stats || {}; }
+  aiCleanupExpiredMemories() {
+    return this._execute('ai', 'cleanup_expired_memories').cleaned || 0;
   }
 
   // ── Cluster ──
