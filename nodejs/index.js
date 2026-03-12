@@ -535,28 +535,39 @@ class Talon {
   // ── AI: Auto Embed (需要先配置 LLM) ──
 
   /**
-   * 存储记忆（自动 embed + 向量写 + FTS 索引 + 缓存）。
+   * 存储记忆（自动 embed + 向量写 + FTS 索引 + 缓存 + 可选 EDU 提取）。
    * @param {string} content - 记忆内容
    * @param {Record<string,string>} [metadata={}] - 元数据
    * @param {number} [ttlSecs] - 过期时间（秒）
+   * @param {boolean} [extractFacts=false] - 是否提取 EDU 结构化事实
    */
-  aiAddMemory(content, metadata = {}, ttlSecs) {
+  aiAddMemory(content, metadata = {}, ttlSecs, extractFacts = false) {
     const p = { content, metadata };
     if (ttlSecs != null) p.ttl_secs = ttlSecs;
+    if (extractFacts) p.extract_facts = true;
     return this._execute('ai', 'add_memory', p);
   }
 
   /**
-   * 智能召回（hybrid search: BM25 + 向量，RRF 融合）。
+   * 智能召回（hybrid search + 时间感知 + 可选 LLM Rerank）。
    * @param {string} query - 搜索查询
    * @param {number} [k=10] - 返回数量
    * @param {number} [ftsWeight=0.4] - FTS 权重
    * @param {number} [vecWeight=0.6] - 向量权重
+   * @param {number} [temporalBoost=0.0] - 时间感知权重
+   * @param {boolean} [rerank=false] - 是否启用 LLM Rerank
+   * @param {number} [rerankTopK] - Rerank 后返回数量
+   * @param {number} [graphDepth=0] - Graph 扩展跳数
    */
-  aiRecall(query, k = 10, ftsWeight = 0.4, vecWeight = 0.6) {
-    return this._execute('ai', 'recall', {
+  aiRecall(query, k = 10, ftsWeight = 0.4, vecWeight = 0.6, temporalBoost = 0.0, rerank = false, rerankTopK = undefined, graphDepth = 0) {
+    const p = {
       query, k, fts_weight: ftsWeight, vec_weight: vecWeight,
-    }).results || [];
+    };
+    if (temporalBoost > 0) p.temporal_boost = temporalBoost;
+    if (rerank) p.rerank = true;
+    if (rerankTopK !== undefined) p.rerank_top_k = rerankTopK;
+    if (graphDepth > 0) p.graph_depth = graphDepth;
+    return this._execute('ai', 'recall', p).results || [];
   }
 
   // ── AI: Auto Summarize (需要先配置 LLM) ──

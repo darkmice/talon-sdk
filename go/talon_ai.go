@@ -514,22 +514,27 @@ func (db *DB) AiClearLlmConfig() error {
 	return err
 }
 
-// AiAddMemory 存储记忆（自动 embed + 向量写 + FTS 索引 + 缓存）。
+// AiAddMemory 存储记忆（自动 embed + 向量写 + FTS 索引 + 缓存 + 可选 EDU 提取）。
 //
 // 自动完成以下操作：
 //  1. 调用 Embedding API 生成向量（自带 FNV 哈希缓存）
 //  2. 写入向量索引（语义搜索）
 //  3. 写入 FTS 索引（关键词搜索）
 //  4. 存储元数据到 KV
+//  5. [可选] 用 LLM 提取 EDU（结构化事件单元），每个 EDU 独立 embed + 存储
 //
 // 需要先调用 AiSetLlmConfig 配置 embed provider。
-func (db *DB) AiAddMemory(content string, metadata map[string]string, ttlSecs *uint64) (uint64, error) {
+// 开启 extractFacts 时还需要 chat provider。
+func (db *DB) AiAddMemory(content string, metadata map[string]string, ttlSecs *uint64, extractFacts bool) (uint64, error) {
 	p := map[string]interface{}{"content": content}
 	if metadata != nil {
 		p["metadata"] = metadata
 	}
 	if ttlSecs != nil {
 		p["ttl_secs"] = *ttlSecs
+	}
+	if extractFacts {
+		p["extract_facts"] = true
 	}
 	data, err := db.execute("ai", "add_memory", p)
 	if err != nil {
@@ -541,15 +546,24 @@ func (db *DB) AiAddMemory(content string, metadata map[string]string, ttlSecs *u
 	return out.ID, json.Unmarshal(data, &out)
 }
 
-// AiRecall 智能召回（hybrid search: BM25 + 向量，RRF 融合）。
-// 两路检索融合：
-//   - FTS BM25 路：关键词精确匹配
-//   - Vector 路：语义相似度
-//   - RRF 融合排序：基于排名融合
-func (db *DB) AiRecall(query string, k int, ftsWeight, vecWeight float64) (json.RawMessage, error) {
+// AiRecall 智能召回（hybrid search + 时间感知 + LLM Rerank + Graph 扩展）。
+// 完整 Pipeline: Query → Graph Expand → Hybrid(BM25+Vec) → RRF → Temporal → Rerank → Top-K
+func (db *DB) AiRecall(query string, k int, ftsWeight, vecWeight, temporalBoost float64, rerank bool, rerankTopK int, graphDepth int) (json.RawMessage, error) {
 	p := map[string]interface{}{
 		"query": query, "k": k,
 		"fts_weight": ftsWeight, "vec_weight": vecWeight,
+	}
+	if temporalBoost > 0 {
+		p["temporal_boost"] = temporalBoost
+	}
+	if rerank {
+		p["rerank"] = true
+	}
+	if rerankTopK > 0 {
+		p["rerank_top_k"] = rerankTopK
+	}
+	if graphDepth > 0 {
+		p["graph_depth"] = graphDepth
 	}
 	return db.execute("ai", "recall", p)
 }

@@ -75,8 +75,8 @@ export class Talon {
   aiMemoryCount(): number;
   aiUpdateMemory(id: number, content?: string, metadata?: Record<string, string>): void;
   aiStoreMemoriesBatch(entries: Record<string, any>[], embeddings: number[][]): void;
-  aiAddMemory(content: string, metadata?: Record<string, string>, ttlSecs?: number): Record<string, any>;
-  aiRecall(query: string, k?: number, ftsWeight?: number, vecWeight?: number): Record<string, any>[];
+  aiAddMemory(content: string, metadata?: Record<string, string>, ttlSecs?: number, extractFacts?: boolean): Record<string, any>;
+  aiRecall(query: string, k?: number, ftsWeight?: number, vecWeight?: number, temporalBoost?: number, rerank?: boolean, rerankTopK?: number, graphDepth?: number): Record<string, any>[];
   aiLogTrace(record: Record<string, any>): void;
   aiTokenUsage(sessionId: string): number;
   aiTokenUsageByRun(runId: string): number;

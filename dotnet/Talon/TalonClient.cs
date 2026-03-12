@@ -574,31 +574,45 @@ namespace TalonDb
         /// <summary>清除 LLM 配置。</summary>
         public void AiClearLlmConfig() => Execute("ai", "clear_llm_config");
 
-        /// <summary>存储记忆（自动 embed + 向量写 + FTS 索引 + 缓存）。</summary>
+        /// <summary>存储记忆（自动 embed + 向量写 + FTS 索引 + 缓存 + 可选 EDU 提取）。</summary>
         /// <remarks>
         /// 自动完成以下操作：
         /// 1. 调用 Embedding API 生成向量（自带 FNV 哈希缓存）
         /// 2. 写入向量索引（语义搜索）
         /// 3. 写入 FTS 索引（关键词搜索）
         /// 4. 存储元数据到 KV
+        /// 5. [可选] 用 LLM 提取 EDU（结构化事件单元），每个 EDU 独立 embed + 存储
+        /// 开启 extractFacts 时还需要 chat provider。
         /// </remarks>
         public long AiAddMemory(string content,
-            Dictionary<string, string>? metadata = null, long? ttlSecs = null)
+            Dictionary<string, string>? metadata = null, long? ttlSecs = null,
+            bool extractFacts = false)
         {
             var p = new Dictionary<string, object> { ["content"] = content };
             if (metadata != null) p["metadata"] = metadata;
             if (ttlSecs.HasValue) p["ttl_secs"] = ttlSecs.Value;
+            if (extractFacts) p["extract_facts"] = true;
             return Execute("ai", "add_memory", p)["id"]?.GetValue<long>() ?? 0;
         }
 
-        /// <summary>智能召回（hybrid search: BM25 + 向量，RRF 融合）。</summary>
+        /// <summary>智能召回（hybrid search + 时间感知 + LLM Rerank + Graph 扩展）。</summary>
         public JsonNode AiRecall(string query, int k = 10,
-            double ftsWeight = 0.4, double vecWeight = 0.6) =>
-            Execute("ai", "recall", new()
+            double ftsWeight = 0.4, double vecWeight = 0.6,
+            double temporalBoost = 0.0,
+            bool rerank = false, int? rerankTopK = null,
+            int graphDepth = 0)
+        {
+            var p = new Dictionary<string, object>
             {
                 ["query"] = query, ["k"] = k,
                 ["fts_weight"] = ftsWeight, ["vec_weight"] = vecWeight
-            });
+            };
+            if (temporalBoost > 0) p["temporal_boost"] = temporalBoost;
+            if (rerank) p["rerank"] = true;
+            if (rerankTopK.HasValue) p["rerank_top_k"] = rerankTopK.Value;
+            if (graphDepth > 0) p["graph_depth"] = graphDepth;
+            return Execute("ai", "recall", p);
+        }
 
         /// <summary>向量搜索 + metadata 过滤。</summary>
         public JsonNode AiSearchMemoryWithFilter(float[] embedding, int k = 10,

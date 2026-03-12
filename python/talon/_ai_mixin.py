@@ -249,16 +249,19 @@ class AiMixin:
 
     def ai_add_memory(self, content: str,
                       metadata: Optional[Dict[str, str]] = None,
-                      ttl_secs: Optional[int] = None) -> int:
-        """存储记忆（自动 embed + 向量写 + FTS 索引 + 缓存）。
+                      ttl_secs: Optional[int] = None,
+                      extract_facts: bool = False) -> int:
+        """存储记忆（自动 embed + 向量写 + FTS 索引 + 缓存 + 可选 EDU 提取）。
 
         自动完成以下操作：
         1. 调用 Embedding API 生成向量（自带 FNV 哈希缓存）
         2. 写入向量索引（语义搜索）
         3. 写入 FTS 索引（关键词搜索）
         4. 存储元数据到 KV
+        5. [可选] 用 LLM 提取 EDU（结构化事件单元），每个 EDU 独立 embed + 存储
 
         需要先调用 ai_set_llm_config 配置 embed provider。
+        开启 extract_facts 时还需要 chat provider。
         返回记忆 ID。
         """
         p: Dict[str, Any] = {"content": content}
@@ -266,32 +269,48 @@ class AiMixin:
             p["metadata"] = metadata
         if ttl_secs is not None:
             p["ttl_secs"] = ttl_secs
+        if extract_facts:
+            p["extract_facts"] = True
         data = self._execute("ai", "add_memory", p)
         return data.get("id", 0)
 
     def ai_recall(self, query: str, k: int = 10,
                   fts_weight: float = 0.4,
-                  vec_weight: float = 0.6) -> List[Dict]:
-        """智能召回（hybrid search: BM25 + 向量，RRF 融合）。
+                  vec_weight: float = 0.6,
+                  temporal_boost: float = 0.0,
+                  rerank: bool = False,
+                  rerank_top_k: int = None,
+                  graph_depth: int = 0) -> List[Dict]:
+        """智能召回（hybrid search + 时间感知 + LLM Rerank + Graph 扩展）。
 
-        两路检索融合：
-        - FTS BM25 路：关键词精确匹配（提升 Single Hop 类问题）
-        - Vector 路：语义相似度（保持 Open Domain 优势）
-        - RRF 融合排序：无需分数归一化，基于排名融合
+        完整 Pipeline（Phase 1-4）：
+          Query → Graph Expand → Hybrid(BM25+Vec) → RRF → Temporal → Rerank → Top-K
 
         Args:
             query: 搜索查询文本
             k: 返回结果数量
             fts_weight: FTS 路权重（默认 0.4）
             vec_weight: 向量路权重（默认 0.6）
+            temporal_boost: 时间感知权重（0.0=关闭，推荐 0.3）
+            rerank: 是否启用 LLM Rerank（需要 chat config）
+            rerank_top_k: Rerank 后返回数量（默认同 k）
+            graph_depth: Graph 扩展跳数（0=关闭，推荐 1-2）
 
-        返回 HybridRecallResult 列表（含 rrf_score, bm25_score, vector_dist）。
-        需要先调用 ai_set_llm_config 配置 embed provider。
+        需要先调用 ai_set_llm_config 配置 embed（+ chat if rerank）。
         """
-        data = self._execute("ai", "recall", {
+        p = {
             "query": query, "k": k,
             "fts_weight": fts_weight, "vec_weight": vec_weight,
-        })
+        }
+        if temporal_boost > 0.0:
+            p["temporal_boost"] = temporal_boost
+        if rerank:
+            p["rerank"] = True
+        if rerank_top_k is not None:
+            p["rerank_top_k"] = rerank_top_k
+        if graph_depth > 0:
+            p["graph_depth"] = graph_depth
+        data = self._execute("ai", "recall", p)
         return data.get("results", [])
 
     def ai_search_memory_with_filter(self, embedding: List[float],

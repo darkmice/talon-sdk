@@ -712,25 +712,63 @@ public class Talon implements AutoCloseable {
      *  2. 写入向量索引（语义搜索）
      *  3. 写入 FTS 索引（关键词搜索）
      *  4. 存储元数据到 KV
+     *  5. [可选] 用 LLM 提取 EDU（结构化事件单元），每个 EDU 独立 embed + 存储
      *
-     *  需要先调用 aiSetLlmConfig 配置 embed provider。 */
+     *  需要先调用 aiSetLlmConfig 配置 embed provider。
+     *  开启 extractFacts 时还需要 chat provider。 */
     public long aiAddMemory(String content,
-                            Map<String, String> metadata, Long ttlSecs) {
+                            Map<String, String> metadata, Long ttlSecs,
+                            boolean extractFacts) {
         Map<String, Object> p = new HashMap<>();
         p.put("content", content);
         if (metadata != null) p.put("metadata", metadata);
         if (ttlSecs != null) p.put("ttl_secs", ttlSecs);
+        if (extractFacts) p.put("extract_facts", true);
         return execute("ai", "add_memory", p)
             .getAsJsonObject().get("id").getAsLong();
     }
 
-    /** 智能召回（hybrid search: BM25 + 向量，RRF 融合）。 */
+    /** 存储记忆（向后兼容：不提取 EDU）。 */
+    public long aiAddMemory(String content,
+                            Map<String, String> metadata, Long ttlSecs) {
+        return aiAddMemory(content, metadata, ttlSecs, false);
+    }
+
+    /** 智能召回（hybrid search + 时间感知 + LLM Rerank + Graph 扩展）。 */
     public JsonElement aiRecall(String query, int k,
-                                double ftsWeight, double vecWeight) {
+                                double ftsWeight, double vecWeight,
+                                double temporalBoost,
+                                boolean rerank, Integer rerankTopK,
+                                int graphDepth) {
         Map<String, Object> p = new HashMap<>();
         p.put("query", query); p.put("k", k);
         p.put("fts_weight", ftsWeight); p.put("vec_weight", vecWeight);
+        if (temporalBoost > 0) p.put("temporal_boost", temporalBoost);
+        if (rerank) p.put("rerank", true);
+        if (rerankTopK != null) p.put("rerank_top_k", rerankTopK);
+        if (graphDepth > 0) p.put("graph_depth", graphDepth);
         return execute("ai", "recall", p);
+    }
+
+    /** 智能召回（向后兼容：含 rerank，无 graphDepth）。 */
+    public JsonElement aiRecall(String query, int k,
+                                double ftsWeight, double vecWeight,
+                                double temporalBoost,
+                                boolean rerank, Integer rerankTopK) {
+        return aiRecall(query, k, ftsWeight, vecWeight, temporalBoost, rerank, rerankTopK, 0);
+    }
+
+    /** 智能召回（向后兼容：含 temporalBoost，无 rerank）。 */
+    public JsonElement aiRecall(String query, int k,
+                                double ftsWeight, double vecWeight,
+                                double temporalBoost) {
+        return aiRecall(query, k, ftsWeight, vecWeight, temporalBoost, false, null, 0);
+    }
+
+    /** 智能召回（向后兼容：无 temporalBoost / rerank / graph）。 */
+    public JsonElement aiRecall(String query, int k,
+                                double ftsWeight, double vecWeight) {
+        return aiRecall(query, k, ftsWeight, vecWeight, 0.0, false, null, 0);
     }
 
     /** 向量搜索 + metadata 过滤。 */
