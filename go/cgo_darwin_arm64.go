@@ -10,6 +10,7 @@ package talon
 
 /*
 #cgo LDFLAGS: -L${SRCDIR}/../lib/darwin_arm64 -ltalon
+#cgo LDFLAGS: -Wl,-rpath,${SRCDIR}/../lib/darwin_arm64
 #cgo LDFLAGS: -framework Security -framework CoreFoundation -liconv
 */
 import "C"
