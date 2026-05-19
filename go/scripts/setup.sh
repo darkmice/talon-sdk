@@ -124,6 +124,26 @@ download_lib() {
   fi
 }
 
+# ── macOS install_name 修复 ──
+
+# 将落地的 libtalon.dylib 的 install_name 改为 @rpath/libtalon.dylib，
+# 避免 dyld 在运行时去找 CI 构建机的绝对路径。
+# 非 Darwin 或 install_name_tool 不存在时静默跳过。
+fix_darwin_install_name() {
+  local dylib_path="$1"
+  case "$(uname -s)" in
+    Darwin) ;;
+    *) return 0 ;;
+  esac
+  if ! command -v install_name_tool >/dev/null 2>&1; then
+    return 0
+  fi
+  if [ -f "$dylib_path" ]; then
+    install_name_tool -id "@rpath/libtalon.dylib" "$dylib_path" || true
+    echo "==> Fixed install_name: ${dylib_path}"
+  fi
+}
+
 # ── 主流程 ──
 
 main() {
@@ -146,6 +166,7 @@ main() {
     cp "${cache}/${STATIC_LIB}" "$target_dir/"
     [ -f "${cache}/${LIB_NAME}" ] && cp "${cache}/${LIB_NAME}" "$target_dir/"
     [ -f "${cache}/talon.h" ] && cp "${cache}/talon.h" "$target_dir/"
+    fix_darwin_install_name "${target_dir}/${LIB_NAME}"
     echo "✅ Library ready in ${target_dir}/"
     return 0
   fi
@@ -156,6 +177,7 @@ main() {
     cp "${cache}/${STATIC_LIB}" "$target_dir/"
     [ -f "${cache}/${LIB_NAME}" ] && cp "${cache}/${LIB_NAME}" "$target_dir/"
     [ -f "${cache}/talon.h" ] && cp "${cache}/talon.h" "$target_dir/"
+    fix_darwin_install_name "${target_dir}/${LIB_NAME}"
     echo "✅ Library installed to ${target_dir}/"
   else
     echo ""
