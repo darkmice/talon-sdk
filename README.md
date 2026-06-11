@@ -41,6 +41,8 @@
 
 另：自 v0.1.41 起原生库 Release 资产命名为 `libtalon-<平台>.tar.gz`（如 `libtalon-macos-arm64.tar.gz`），SDK 内置下载器已同步适配；手动下载请使用新命名。
 
+**原生库不再随仓库分发**：v0.1.41 起静态库体积超过 GitHub 单文件上限，`lib/` 下仅保留头文件。clone 本仓库后（Go/C SDK 场景）先执行 `make setup`（当前平台）或 `make setup-all`（全部 8 平台）从 Release 下载；Python/Node.js 包不受影响（安装时自动下载）。
+
 ## Go
 
 ```bash
