@@ -55,8 +55,8 @@ function platformInfo() {
 
   const platDir = plat === 'darwin' ? `darwin_${platArch}`
     : plat === 'win32' ? `windows_${platArch}` : `linux_${platArch}`;
-  const releaseName = plat === 'darwin' ? `talon-macos-${platArch}`
-    : plat === 'win32' ? `talon-windows-${platArch}` : `talon-linux-${platArch}`;
+  const releaseName = plat === 'darwin' ? `macos-${platArch}`
+    : plat === 'win32' ? `windows-${platArch}` : `linux-${platArch}`;
 
   return { libName, platDir, releaseName };
 }

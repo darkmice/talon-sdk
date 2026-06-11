@@ -29,17 +29,17 @@ function platformInfo() {
   let libName, releaseName;
   if (plat === 'darwin') {
     libName = 'libtalon.dylib';
-    releaseName = `talon-macos-${arch === 'arm64' ? 'arm64' : 'amd64'}`;
+    releaseName = `macos-${arch === 'arm64' ? 'arm64' : 'amd64'}`;
   } else if (plat === 'win32') {
     libName = 'talon.dll';
-    releaseName = 'talon-windows-amd64';
+    releaseName = 'windows-amd64';
   } else {
     libName = 'libtalon.so';
     let a = 'amd64';
     if (arch === 'arm64') a = 'arm64';
     else if (arch === 'loong64') a = 'loongarch64';
     else if (arch === 'riscv64') a = 'riscv64';
-    releaseName = `talon-linux-${a}`;
+    releaseName = `linux-${a}`;
   }
 
   return { libName, releaseName };

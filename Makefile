@@ -9,7 +9,7 @@
 #   make check                  # 检查是否存在
 #   make clean                  # 清理下载的库
 
-VERSION ?= 0.1.0
+VERSION ?= 0.1.41
 REPO    := darkmice/talon-bin
 LIB_DIR := lib
 BASE_URL := https://github.com/$(REPO)/releases/download/v$(VERSION)
@@ -21,10 +21,10 @@ UNAME_M := $(shell uname -m)
 ifeq ($(UNAME_S),Darwin)
   ifeq ($(UNAME_M),arm64)
     CURRENT_PLATFORM := darwin_arm64
-    RELEASE_NAME := talon-macos-arm64
+    RELEASE_NAME := macos-arm64
   else
     CURRENT_PLATFORM := darwin_amd64
-    RELEASE_NAME := talon-macos-amd64
+    RELEASE_NAME := macos-amd64
   endif
   STATIC_LIB := libtalon.a
   DYLIB := libtalon.dylib
@@ -33,34 +33,34 @@ else ifeq ($(UNAME_S),Linux)
   DYLIB := libtalon.so
   ifeq ($(UNAME_M),aarch64)
     CURRENT_PLATFORM := linux_arm64
-    RELEASE_NAME := talon-linux-arm64
+    RELEASE_NAME := linux-arm64
   else ifeq ($(UNAME_M),loongarch64)
     CURRENT_PLATFORM := linux_loongarch64
-    RELEASE_NAME := talon-linux-loongarch64
+    RELEASE_NAME := linux-loongarch64
   else ifeq ($(UNAME_M),riscv64)
     CURRENT_PLATFORM := linux_riscv64
-    RELEASE_NAME := talon-linux-riscv64
+    RELEASE_NAME := linux-riscv64
   else
     CURRENT_PLATFORM := linux_amd64
-    RELEASE_NAME := talon-linux-amd64
+    RELEASE_NAME := linux-amd64
   endif
 else
   CURRENT_PLATFORM := windows_amd64
-  RELEASE_NAME := talon-windows-amd64
+  RELEASE_NAME := windows-amd64
   STATIC_LIB := talon.lib
   DYLIB := talon.dll
 endif
 
 # 所有支持的平台
 ALL_PLATFORMS := \
-	darwin_arm64:talon-macos-arm64 \
-	darwin_amd64:talon-macos-amd64 \
-	linux_amd64:talon-linux-amd64 \
-	linux_arm64:talon-linux-arm64 \
-	linux_loongarch64:talon-linux-loongarch64 \
-	linux_riscv64:talon-linux-riscv64 \
-	windows_amd64:talon-windows-amd64 \
-	windows_arm64:talon-windows-arm64
+	darwin_arm64:macos-arm64 \
+	darwin_amd64:macos-amd64 \
+	linux_amd64:linux-amd64 \
+	linux_arm64:linux-arm64 \
+	linux_loongarch64:linux-loongarch64 \
+	linux_riscv64:linux-riscv64 \
+	windows_amd64:windows-amd64 \
+	windows_arm64:windows-arm64
 
 .PHONY: setup setup-all clean check help
 

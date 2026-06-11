@@ -31,6 +31,16 @@
 
 ---
 
+## v0.1.41 行为变化（升级必读）
+
+引擎侧 2026-06 安全/数据正确性加固（talon-bin v0.1.41）带来三条对 SDK 使用者可见的行为变化：
+
+1. **写操作可能返回 `replication error`**（仅 Primary 复制模式）：数据**已持久化到本地引擎**，但复制日志（oplog）记录失败、主从将分叉。调用方必须处理该错误；重试需自行考虑幂等——`kv_incr` 等非幂等操作不可盲目重试。
+2. **Replica 只读拒绝面扩大**：`mq poll`（推进消费位点）、FTS 别名写（`add_alias`/`remove_alias`）、TS 保留策略与清理（`set_retention`/`purge_expired`/`purge_by_tag`）在 Replica 节点现在返回 `read-only node` 错误。此前这些操作在 Replica 上能成功属于旁路 bug。
+3. **PgWire 认证**：服务端配置 auth token 后，PostgreSQL 协议连接需以该 token 为密码（CleartextPassword）。
+
+另：自 v0.1.41 起原生库 Release 资产命名为 `libtalon-<平台>.tar.gz`（如 `libtalon-macos-arm64.tar.gz`），SDK 内置下载器已同步适配；手动下载请使用新命名。
+
 ## Go
 
 ```bash

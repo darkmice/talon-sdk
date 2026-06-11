@@ -30,11 +30,11 @@ def _platform_info():
         lib_name = "libtalon.dylib"
         arch = "arm64" if machine == "arm64" else "amd64"
         plat_dir = f"darwin_{arch}"
-        release_name = f"talon-macos-{arch}"
+        release_name = f"macos-{arch}"
     elif system == "Windows":
         lib_name = "talon.dll"
         plat_dir = "windows_amd64"
-        release_name = "talon-windows-amd64"
+        release_name = "windows-amd64"
     else:
         lib_name = "libtalon.so"
         if machine == "aarch64":
@@ -46,7 +46,7 @@ def _platform_info():
         else:
             arch = "amd64"
         plat_dir = f"linux_{arch}"
-        release_name = f"talon-linux-{arch}"
+        release_name = f"linux-{arch}"
 
     return lib_name, plat_dir, release_name
 
