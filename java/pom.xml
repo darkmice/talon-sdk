@@ -10,6 +10,29 @@
     <packaging>jar</packaging>
     <name>Talon Java SDK</name>
     <description>Talon — 面向本地 AI 的多模融合数据引擎 Java SDK</description>
+    <url>https://github.com/darkmice/talon-sdk</url>
+
+    <licenses>
+        <license>
+            <name>MIT License</name>
+            <url>https://opensource.org/licenses/MIT</url>
+        </license>
+    </licenses>
+
+    <developers>
+        <developer>
+            <name>Talon Contributors</name>
+            <email>dark.lijin@gmail.com</email>
+            <organization>Talon</organization>
+            <organizationUrl>https://github.com/darkmice</organizationUrl>
+        </developer>
+    </developers>
+
+    <scm>
+        <connection>scm:git:git://github.com/darkmice/talon-sdk.git</connection>
+        <developerConnection>scm:git:ssh://github.com/darkmice/talon-sdk.git</developerConnection>
+        <url>https://github.com/darkmice/talon-sdk/tree/main/java</url>
+    </scm>
 
     <properties>
         <maven.compiler.source>11</maven.compiler.source>
@@ -29,4 +52,83 @@
             <version>2.11.0</version>
         </dependency>
     </dependencies>
+
+    <build>
+        <plugins>
+            <!-- Maven Central 发布走 Central Portal(OSSRH 已于 2025-06 停服)。
+                 publishingServerId 须与 CI settings.xml 的 central 凭据对应。 -->
+            <plugin>
+                <groupId>org.sonatype.central</groupId>
+                <artifactId>central-publishing-maven-plugin</artifactId>
+                <version>0.6.0</version>
+                <extensions>true</extensions>
+                <configuration>
+                    <publishingServerId>central</publishingServerId>
+                    <autoPublish>true</autoPublish>
+                </configuration>
+            </plugin>
+        </plugins>
+    </build>
+
+    <profiles>
+        <!-- Central 强制要求 sources/javadoc/GPG 签名,日常本地构建不需要,收进 release profile -->
+        <profile>
+            <id>release</id>
+            <build>
+                <plugins>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-source-plugin</artifactId>
+                        <version>3.3.1</version>
+                        <executions>
+                            <execution>
+                                <id>attach-sources</id>
+                                <goals>
+                                    <goal>jar-no-fork</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-javadoc-plugin</artifactId>
+                        <version>3.6.3</version>
+                        <configuration>
+                            <doclint>none</doclint>
+                            <failOnError>false</failOnError>
+                        </configuration>
+                        <executions>
+                            <execution>
+                                <id>attach-javadocs</id>
+                                <goals>
+                                    <goal>jar</goal>
+                                </goals>
+                            </execution>
+                        </executions>
+                    </plugin>
+                    <plugin>
+                        <groupId>org.apache.maven.plugins</groupId>
+                        <artifactId>maven-gpg-plugin</artifactId>
+                        <version>3.2.4</version>
+                        <executions>
+                            <execution>
+                                <id>sign-artifacts</id>
+                                <phase>verify</phase>
+                                <goals>
+                                    <goal>sign</goal>
+                                </goals>
+                                <configuration>
+                                    <!-- CI 无交互终端,GPG 走 loopback 读环境变量口令 -->
+                                    <gpgArguments>
+                                        <arg>--pinentry-mode</arg>
+                                        <arg>loopback</arg>
+                                    </gpgArguments>
+                                </configuration>
+                            </execution>
+                        </executions>
+                    </plugin>
+                </plugins>
+            </build>
+        </profile>
+    </profiles>
 </project>
